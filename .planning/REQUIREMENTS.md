@@ -100,4 +100,4 @@
 
 ---
 *Requirements defined: 2026-03-18*
-*Last updated: 2026-03-18 after initial definition*
+*Last updated: 2026-03-18 — traceability confirmed against ROADMAP.md phases 1–6*
