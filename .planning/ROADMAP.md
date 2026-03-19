@@ -6,7 +6,7 @@ Milestone 2 transforms BolusBrain from a data-collection app into an intelligent
 
 ## Phases
 
-- [ ] **Phase 1: Tech Debt and Foundation Fixes** - Eliminate data bugs and hardcoded secrets that would corrupt new features built on top of them
+- [ ] **Phase 1: Tech Debt and Foundation Fixes** - Eliminate data bugs and fragile error handling that would corrupt new features built on top of them
 - [ ] **Phase 2: History Refactor and Core UX Components** - Migrate history screen to session model and build the reusable components all intelligence features depend on
 - [ ] **Phase 3: Intelligence Layer — Matching and Outcome Surfacing** - Wire the existing matching engine into history cards and meal log screen
 - [ ] **Phase 4: HomeScreen Glucose Graph and HbA1c Disclaimer** - Expose full-day glucose graph and surface HbA1c with appropriate disclaimer
@@ -16,25 +16,30 @@ Milestone 2 transforms BolusBrain from a data-collection app into an intelligent
 ## Phase Details
 
 ### Phase 1: Tech Debt and Foundation Fixes
-**Goal**: The codebase is stable, secrets are secure, and data computations are correct — so every feature built afterward stands on solid ground
+**Goal**: The codebase is stable, error handling is explicit, data computations are correct, and the canonical data model is documented — so every feature built afterward stands on solid ground
 **Depends on**: Nothing (first phase)
-**Requirements**: DEBT-01, DEBT-02, DEBT-03, DEBT-04
+**Requirements**: DEBT-02, DEBT-03, DEBT-04, DEBT-05, DEBT-06, DEBT-07, TEST-01
+**Note**: DEBT-01 (env vars) was completed in commit 76b6bc5 — already done.
 **Success Criteria** (what must be TRUE):
-  1. Nightscout URL and token are read from `.env` environment variables — no credentials appear in any source file
-  2. Estimated HbA1c value on HomeScreen is computed from a recomputed sum (not incremental accumulation) — the value is stable and does not drift over repeated app launches
-  3. The `GlucoseResponse` build block exists in exactly one place in the codebase — both curve fetch functions call the shared function
-  4. The `expo-file-system` import in `carbEstimate.ts` uses the current non-legacy API — no `/legacy` sub-path anywhere in the codebase
+  1. Estimated HbA1c value on HomeScreen is computed from a recomputed sum (not incremental accumulation) — the value is stable and does not drift over repeated app launches
+  2. The `GlucoseResponse` build block exists in exactly one place in the codebase — both curve fetch functions call the shared function
+  3. The `expo-file-system` import in `carbEstimate.ts` uses the current non-legacy API — no `/legacy` sub-path anywhere in the codebase
+  4. `fetchGlucosesSince` throws/logs on non-OK HTTP response — silent swallowing eliminated
+  5. `Meal.glucoseResponse` is documented as the canonical curve location in CLAUDE.md; the session write path is deprecated with a comment
+  6. All `JSON.parse` calls in `storage.ts` are wrapped in try/catch — a corrupt AsyncStorage entry logs a warning and returns a safe default rather than crashing
+  7. Unit tests exist for: HbA1c formula, outcome badge classification (all 5 states), and `saveMeal` session grouping (solo, join-existing, boundary)
 **Plans**: TBD
 
 ### Phase 2: History Refactor and Core UX Components
-**Goal**: The history screen operates on the session data model, new chart and animation libraries are correctly configured, and the reusable `GlucoseChart`, `ExpandableCard`, `OutcomeBadge`, and `DayGroupHeader` components exist — ready to be wired with data in Phase 3
+**Goal**: The history screen operates on the session data model, legacy meals are migrated to proper session records, new chart and animation libraries are correctly configured, and the reusable `GlucoseChart`, `ExpandableCard`, `OutcomeBadge`, and `DayGroupHeader` components exist — ready to be wired with data in Phase 3
 **Depends on**: Phase 1
-**Requirements**: HIST-01, HIST-02, HIST-03, HIST-05
+**Requirements**: HIST-01, HIST-02, HIST-03, HIST-05, HIST-06
 **Success Criteria** (what must be TRUE):
   1. History screen loads and displays entries grouped under day headers (e.g. "Wednesday 18 Mar") that collapse and expand on tap
   2. Tapping any history card expands it to reveal full glucose stats and a curve graph — tapping again collapses it
-  3. Every history card that has a completed glucose response shows a traffic light badge: Green (3.9–10.0 mmol/L and returned to range), Orange (slight excursion then returned), or Red (below 3.9 or above 13, or above 10 and did not return within 3 hours)
+  3. Every history card shows an outcome badge: Green (stayed 3.9–10.0), Orange (went above 10, returned to range), Dark Amber (stayed above 10 but below 14), Red (below 3.9 or ≥14.0), Pending (curve incomplete), or None (no curve)
   4. User can tap "Late Entry" when logging a meal and select an earlier time — the glucose curve is fetched from that earlier time rather than now
+  5. All legacy meals (pre-session data) are migrated to proper session records on first launch after this phase ships — migration is idempotent and runs only once
 **Plans**: TBD
 
 ### Phase 3: Intelligence Layer — Matching and Outcome Surfacing
@@ -75,12 +80,18 @@ Milestone 2 transforms BolusBrain from a data-collection app into an intelligent
   1. Landing page includes a working AI carb estimation photo demo section and a Dexcom integration teaser — both visible without scrolling past the fold on desktop
   2. A visitor can submit their email address on the landing page and it is captured for pre-interest follow-up
   3. An email has been sent to devices@mhra.gov.uk describing the app and its "no advice, only historical patterns" framing — the response (or sent date if no response) is documented in project records
-**Plans**: TBD
+**Plans**: 3 plans
+
+Plans:
+- [ ] 06-01-PLAN.md — Scaffold Next.js project, Loops.so /api/subscribe Route Handler, MHRA correspondence record
+- [ ] 06-02-PLAN.md — IPhoneMockup + EmailForm components, Hero / DemoSection / Footer sections, page.tsx composition
+- [ ] 06-03-PLAN.md — Git init, Vercel deploy, LOOPS_API_KEY env var, custom domain, live verification checkpoint
 
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 → 2 → 3 → 4 → 5, with Phase 6 independent (can run in parallel)
+Phase 6 (Route to Market) is INDEPENDENT — start immediately, in parallel with Phase 1. The MHRA email (LEGAL-01) should be sent before any code ships to establish the regulatory paper trail.
+Phases 1 → 2 → 3 → 4 → 5 execute in numeric order.
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
@@ -89,4 +100,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5, with Phase 6 indepen
 | 3. Intelligence Layer — Matching and Outcome Surfacing | 0/TBD | Not started | - |
 | 4. HomeScreen Glucose Graph and HbA1c Disclaimer | 0/TBD | Not started | - |
 | 5. Data Model Extensions and Editing | 0/TBD | Not started | - |
-| 6. Route to Market | 0/TBD | Not started | - |
+| 6. Route to Market | 0/3 | Planned | - |
