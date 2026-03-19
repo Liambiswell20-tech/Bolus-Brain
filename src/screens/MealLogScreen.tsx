@@ -14,8 +14,9 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { fetchAndStoreCurve, saveMeal } from '../services/storage';
-import { fetchLatestGlucose } from '../services/nightscout';
+import { fetchGlucoseRange, fetchLatestGlucose } from '../services/nightscout';
 import {
   estimateCarbsFromPhoto,
   getRemainingEstimates,
@@ -31,6 +32,8 @@ export default function MealLogScreen() {
   const [mealName, setMealName] = useState('');
   const [insulinUnits, setInsulinUnits] = useState('');
   const [saving, setSaving] = useState(false);
+  const [loggedAt, setLoggedAt] = useState(new Date());
+  const [showTimePicker, setShowTimePicker] = useState(false);
 
   // Carb estimate state
   const [estimating, setEstimating] = useState(false);
@@ -117,9 +120,22 @@ export default function MealLogScreen() {
     setSaving(true);
     try {
       let startGlucose: number | null = null;
+      const isBackdated = Date.now() - loggedAt.getTime() > 2 * 60 * 1000;
       try {
-        const reading = await fetchLatestGlucose();
-        startGlucose = reading.mmol;
+        if (isBackdated) {
+          const readings = await fetchGlucoseRange(
+            loggedAt.getTime() - 5 * 60 * 1000,
+            loggedAt.getTime() + 5 * 60 * 1000
+          );
+          if (readings.length > 0) {
+            startGlucose = readings.reduce((closest, r) =>
+              Math.abs(r.date - loggedAt.getTime()) < Math.abs(closest.date - loggedAt.getTime()) ? r : closest
+            ).mmol;
+          }
+        } else {
+          const reading = await fetchLatestGlucose();
+          startGlucose = reading.mmol;
+        }
       } catch {}
 
       const meal = await saveMeal({
@@ -127,7 +143,7 @@ export default function MealLogScreen() {
         photoUri,
         insulinUnits: isNaN(units) ? 0 : units,
         startGlucose,
-      });
+      }, loggedAt);
 
       fetchAndStoreCurve(meal.id).catch(() => {});
       navigation.goBack();
@@ -230,6 +246,42 @@ export default function MealLogScreen() {
           returnKeyType="done"
         />
 
+        {/* Logged at */}
+        <Text style={styles.label}>Logged at</Text>
+        <Pressable style={styles.timeRow} onPress={() => setShowTimePicker(true)}>
+          <Text style={styles.timeText}>
+            {loggedAt.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false })}
+          </Text>
+          <Text style={styles.timeChange}>Change</Text>
+        </Pressable>
+
+        {showTimePicker && (
+          <View style={styles.pickerContainer}>
+            <DateTimePicker
+              value={loggedAt}
+              mode="time"
+              is24Hour
+              display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+              themeVariant="dark"
+              onChange={(_event: DateTimePickerEvent, date?: Date) => {
+                if (Platform.OS !== 'ios') setShowTimePicker(false);
+                if (date) {
+                  // If selected time is in the future, user means yesterday at that time
+                  const adjusted = date.getTime() > Date.now()
+                    ? new Date(date.getTime() - 24 * 60 * 60 * 1000)
+                    : date;
+                  setLoggedAt(adjusted);
+                }
+              }}
+            />
+            {Platform.OS === 'ios' && (
+              <Pressable onPress={() => setShowTimePicker(false)} style={styles.pickerDone}>
+                <Text style={styles.pickerDoneText}>Done</Text>
+              </Pressable>
+            )}
+          </View>
+        )}
+
         {/* Save */}
         <Pressable
           style={[styles.saveBtn, saving && styles.saveBtnDisabled]}
@@ -321,6 +373,15 @@ const styles = StyleSheet.create({
     color: '#8E8E93', fontSize: 13, fontWeight: '600',
     textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8,
   },
+  timeRow: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    backgroundColor: '#1C1C1E', borderRadius: 12, padding: 16, marginBottom: 24,
+  },
+  timeText: { color: '#FFFFFF', fontSize: 17 },
+  timeChange: { color: '#0A84FF', fontSize: 15 },
+  pickerContainer: { backgroundColor: '#1C1C1E', borderRadius: 12, marginBottom: 24, overflow: 'hidden' },
+  pickerDone: { alignItems: 'flex-end', paddingHorizontal: 16, paddingBottom: 12 },
+  pickerDoneText: { color: '#0A84FF', fontSize: 15, fontWeight: '600' },
   input: {
     backgroundColor: '#1C1C1E', color: '#FFFFFF',
     fontSize: 17, padding: 16, borderRadius: 12, marginBottom: 24,

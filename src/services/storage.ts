@@ -265,10 +265,11 @@ export async function loadMeals(): Promise<Meal[]> {
 }
 
 export async function saveMeal(
-  meal: Omit<Meal, 'id' | 'loggedAt' | 'glucoseResponse' | 'sessionId'>
+  meal: Omit<Meal, 'id' | 'loggedAt' | 'glucoseResponse' | 'sessionId'>,
+  loggedAt?: Date
 ): Promise<Meal> {
   const [meals, sessions] = await Promise.all([loadMealsRaw(), loadSessionsRaw()]);
-  const now = new Date();
+  const now = loggedAt ?? new Date();
 
   const newMeal: Meal = {
     ...meal,
