@@ -270,7 +270,9 @@ export async function updateMeal(
   changes: Partial<Pick<Meal, 'name' | 'photoUri' | 'insulinUnits' | 'loggedAt' | 'carbsEstimated'>>
 ): Promise<void> {
   const meals = await loadMealsRaw();
-  const updated = meals.map(m => (m.id === id ? { ...m, ...changes } : m));
+  // If loggedAt is changing, the old curve is no longer valid — clear it
+  const patch = 'loggedAt' in changes ? { ...changes, glucoseResponse: null } : changes;
+  const updated = meals.map(m => (m.id === id ? { ...m, ...patch } : m));
   await saveMealsRaw(updated);
 }
 

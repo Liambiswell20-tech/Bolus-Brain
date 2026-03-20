@@ -15,7 +15,7 @@ import {
   View,
 } from 'react-native';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
-import { loadMeals, updateMeal, deleteMeal } from '../services/storage';
+import { loadMeals, updateMeal, deleteMeal, fetchAndStoreCurveForMeal } from '../services/storage';
 import type { RootStackParamList } from '../../App';
 
 export default function EditMealScreen() {
@@ -96,6 +96,8 @@ export default function EditMealScreen() {
         insulinUnits: isNaN(units) ? 0 : units,
         loggedAt: loggedAt.toISOString(),
       });
+      // Re-fetch curve from the (possibly new) loggedAt time
+      await fetchAndStoreCurveForMeal(mealId).catch(() => {});
       navigation.goBack();
     } catch {
       Alert.alert('Save failed', 'Could not save changes. Try again.');
