@@ -52,7 +52,7 @@ Plans:
 - [x] 02-01-PLAN.md — Install react-native-gifted-charts, define component prop contracts in src/components/types.ts
 - [x] 02-02-PLAN.md — Build GlucoseChart (line chart with reference lines) and OutcomeBadge (coloured pill) components
 - [x] 02-03-PLAN.md — Build ExpandableCard, DayGroupHeader, SessionSubHeader components
-- [ ] 02-04-PLAN.md — Add migrateLegacySessions to storage.ts, refactor MealHistoryScreen to session model, wire migration in App.tsx
+- [x] 02-04-PLAN.md — Add migrateLegacySessions to storage.ts, refactor MealHistoryScreen to session model, wire migration in App.tsx
 - [x] 02-05-PLAN.md — Add Late Entry time picker to MealLogScreen and InsulinLogScreen
 - [ ] 02-06-PLAN.md — Automated checks + human verification checkpoint
 
@@ -110,7 +110,7 @@ Phases 1 → 2 → 3 → 4 → 5 execute in numeric order.
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Tech Debt and Foundation Fixes | 4/4 | Complete   | 2026-03-21 |
-| 2. History Refactor and Core UX Components | 4/6 | In Progress|  |
+| 2. History Refactor and Core UX Components | 5/6 | In Progress|  |
 | 3. Intelligence Layer — Matching and Outcome Surfacing | 0/TBD | Not started | - |
 | 4. HomeScreen Glucose Graph and HbA1c Disclaimer | 0/TBD | Not started | - |
 | 5. Data Model Extensions and Editing | 0/TBD | Not started | - |
