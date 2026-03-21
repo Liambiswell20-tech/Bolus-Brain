@@ -7,8 +7,8 @@
 **Glucose Monitoring (CGM):**
 - Nightscout REST API - Real-time CGM glucose readings from FreeStyle Libre 2 Plus via LibreLinkUp bridge
   - SDK/Client: Native `fetch` (no SDK)
-  - Base URL: `https://p01--nightscout--7x4mdclxhl6z.code.run/api/v1/entries.json`
-  - Auth: Token appended as query param (`?token=...`) — hardcoded in `src/services/nightscout.ts`
+  - Base URL: set via `EXPO_PUBLIC_NIGHTSCOUT_URL` in `.env`
+  - Auth: Token set via `EXPO_PUBLIC_NIGHTSCOUT_TOKEN` in `.env` — appended as query param (`?token=...`)
   - Endpoints used:
     - `?count=1` — latest single reading (live glucose display, `fetchLatestGlucose`)
     - `?count=9000&find[date][$gte]=...` — bulk since-timestamp for rolling store (`fetchGlucosesSince`)
