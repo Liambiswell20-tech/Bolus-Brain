@@ -106,9 +106,10 @@ export function findSimilarSessions(
       const mealScore = jaccard(targetTokens, sessionTokens(s));
       const insulinScore = insulinSimilarity(target, s);
       const score = mealScore * MEAL_WEIGHT + insulinScore * INSULIN_WEIGHT;
-      return { session: s, score };
+      return { session: s, score, mealScore };
     })
-    .filter(m => m.score >= SIMILARITY_THRESHOLD)
+    .filter(m => m.mealScore > 0 && m.score >= SIMILARITY_THRESHOLD)
+    .map(({ session, score }) => ({ session, score }))
     .sort((a, b) => b.score - a.score)
     .slice(0, MAX_MATCHES);
 
