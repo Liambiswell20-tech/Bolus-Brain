@@ -56,7 +56,12 @@ export async function saveInsulinLog(
 export async function loadInsulinLogs(): Promise<InsulinLog[]> {
   const raw = await AsyncStorage.getItem(INSULIN_LOGS_KEY);
   if (!raw) return [];
-  return JSON.parse(raw) as InsulinLog[];
+  try {
+    return JSON.parse(raw) as InsulinLog[];
+  } catch {
+    console.warn('[storage] loadInsulinLogs: corrupt data, returning []');
+    return [];
+  }
 }
 
 // Fetches the 12hr glucose curve for a long-acting dose and stores it.

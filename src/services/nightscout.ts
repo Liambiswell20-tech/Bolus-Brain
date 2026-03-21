@@ -72,7 +72,10 @@ export async function fetchLatestGlucose(): Promise<GlucoseReading> {
 export async function fetchGlucosesSince(fromMs: number): Promise<GlucoseEntry[]> {
   const url = `${NIGHTSCOUT_URL}?count=9000&token=${TOKEN}&find[date][$gte]=${fromMs}`;
   const response = await fetch(url);
-  if (!response.ok) return [];
+  if (!response.ok) {
+    console.warn(`[nightscout] fetchGlucosesSince: non-OK response ${response.status} — returning []`);
+    return [];
+  }
   const entries: GlucoseEntry[] = await response.json();
   if (!entries || entries.length === 0) return [];
   return entries.sort((a, b) => a.date - b.date);

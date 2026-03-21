@@ -40,12 +40,30 @@ Full project brief: `C:\Users\Liamb\OneDrive\Desktop\Bolus Brain Project\CLAUDE.
 - Readings every 5 minutes
 
 ## Key Architecture Decisions
-- Curves stored on `meal.glucoseResponse` (not session) — use `fetchAndStoreCurveForMeal(mealId)`
+- **Canonical curve location**: `Meal.glucoseResponse` — always use `fetchAndStoreCurveForMeal(mealId)` to fetch and store curves. The `_fetchCurveForSession` path (which saves to `Session.glucoseResponse`) is deprecated — it exists for backward compatibility only and must not be used for new features.
 - Sessions exist in storage for future pattern matching but are NOT displayed in history
 - Session grouping caps strictly at `session.startedAt + 3hrs` (no chain-reaction)
 - `GlucoseResponse` fields: startGlucose, peakGlucose, timeToPeakMins, totalRise, endGlucose, fallFromPeak, timeFromPeakToEndMins, readings, isPartial, fetchedAt
 
 ## Current Build Phase
-- Phase 3 in progress — meal history redesign complete, meal matching foundation built
-- Next: surface "you've eaten this before" matches in history UI
+- GSD project initialized — see `.planning/` for roadmap and requirements
 - Do NOT build prediction engine until 50+ meals logged
+
+---
+
+## Tool Orchestration Rules
+
+Three tools are in use. Each has a distinct role — do NOT let them overlap:
+
+| Tool | Role | Owns |
+|------|------|------|
+| **GSD** | Project orchestrator | Roadmap, phase planning, execution waves, verification |
+| **gstack CEO/Eng review** | Strategic review | Plan quality review before execution |
+| **Superpowers** | Per-task discipline | TDD enforcement, git worktrees, code review within tasks |
+
+**Rules:**
+- GSD drives all phase planning and execution — never invoke `superpowers:writing-plans` or `superpowers:executing-plans` while GSD is managing a phase
+- Superpowers TDD (`superpowers:test-driven-development`) SHOULD be invoked for every implementation task within a phase
+- Superpowers systematic debugging (`superpowers:systematic-debugging`) SHOULD be invoked when investigating bugs
+- Superpowers code review (`superpowers:requesting-code-review`) SHOULD run before completing each plan
+- GSD executor subagents automatically skip Superpowers (enforced by `<SUBAGENT-STOP>` in Superpowers itself)
