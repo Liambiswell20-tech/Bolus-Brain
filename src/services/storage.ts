@@ -4,6 +4,7 @@ import { CurvePoint, fetchGlucoseRange } from './nightscout';
 const MEALS_KEY = 'glucolog_meals';
 const SESSIONS_KEY = 'glucolog_sessions';
 const INSULIN_LOGS_KEY = 'glucolog_insulin_logs';
+const MIGRATION_V1_KEY = 'glucolog_migration_v1';
 const HBA1C_CACHE_KEY = 'glucolog_hba1c_cache';
 const GLUCOSE_STORE_KEY = 'glucolog_glucose_store';
 const THREE_HOURS_MS = 3 * 60 * 60 * 1000;
@@ -510,4 +511,66 @@ async function _fetchCurveForSession(sessionId: string, sessions: Session[]): Pr
 
   const updated = sessions.map(s => (s.id === sessionId ? { ...s, glucoseResponse } : s));
   await saveSessionsRaw(updated);
+}
+
+// One-time idempotent migration: creates proper Session records for meals that pre-date
+// the session system (meals where sessionId is null). Runs on app startup, guarded by
+// AsyncStorage flag. If storage write fails, logs a warning and the synthetic fallback
+// in loadSessionsWithMeals() keeps the history screen working — migration retries next launch.
+// Per D-11: totally silent (no spinner, no user message). Per D-12: idempotent, runs once.
+// Per D-13: on failure, console.warn and continue.
+export async function migrateLegacySessions(): Promise<void> {
+  // Guard: skip if already migrated
+  const done = await AsyncStorage.getItem(MIGRATION_V1_KEY);
+  if (done === 'true') return;
+
+  try {
+    const [mealsRaw, sessionsRaw] = await Promise.all([
+      AsyncStorage.getItem(MEALS_KEY),
+      AsyncStorage.getItem(SESSIONS_KEY),
+    ]);
+
+    const meals: Meal[] = mealsRaw ? JSON.parse(mealsRaw) : [];
+    const sessions: Session[] = sessionsRaw ? JSON.parse(sessionsRaw) : [];
+
+    const sessionMealIds = new Set(sessions.flatMap(s => s.mealIds));
+    const legacyMeals = meals.filter(m => !sessionMealIds.has(m.id));
+
+    if (legacyMeals.length === 0) {
+      // No legacy meals — mark done and return
+      await AsyncStorage.setItem(MIGRATION_V1_KEY, 'true');
+      return;
+    }
+
+    // Create one solo Session per legacy meal, using the meal's own loggedAt as startedAt.
+    // sessionId on the meal is updated to match the new session id.
+    const newSessions: Session[] = legacyMeals.map(m => ({
+      id: `legacy_migrated_${m.id}`,
+      mealIds: [m.id],
+      startedAt: m.loggedAt,
+      confidence: 'high' as SessionConfidence,
+      glucoseResponse: m.glucoseResponse ?? null,
+    }));
+
+    // Update meals to set their sessionId
+    const updatedMeals = meals.map(m => {
+      const newSession = newSessions.find(s => s.mealIds[0] === m.id);
+      return newSession ? { ...m, sessionId: newSession.id } : m;
+    });
+
+    const updatedSessions = [...sessions, ...newSessions];
+
+    await Promise.all([
+      AsyncStorage.setItem(MEALS_KEY, JSON.stringify(updatedMeals)),
+      AsyncStorage.setItem(SESSIONS_KEY, JSON.stringify(updatedSessions)),
+    ]);
+
+    // Mark migration complete only after successful write
+    await AsyncStorage.setItem(MIGRATION_V1_KEY, 'true');
+    console.log(`[storage] migrateLegacySessions: migrated ${legacyMeals.length} legacy meal(s)`);
+  } catch (err) {
+    // Per D-13: warn and continue. loadSessionsWithMeals() synthetic fallback still works.
+    // Migration will retry on next launch (MIGRATION_V1_KEY was never set to 'true').
+    console.warn('[storage] migrateLegacySessions: failed, will retry on next launch', err);
+  }
 }
