@@ -161,6 +161,23 @@ Date shown on second line or inline after a `·` separator, formatted as: `"Wed 
 **Visibility rule:** If `matchData === null` or `matchData.matches.length < 2`, render nothing —
 no placeholder, no empty state, complete silence. (CONTEXT.md D-04, D-14)
 
+**Current session confidence warning:** If the card's own session has `confidence !== 'high'`
+(i.e. 2+ meals were logged in the same 3-hour window), render a warning line **above** the
+section header:
+```
+fontSize: 11, color: '#636366', fontStyle: 'italic'
+```
+Exact copy: `"Other meals were logged in this session — results may be affected"`
+Rendered as a single `Text` element with `marginBottom: 4`. No icon.
+
+**Per-row confidence warning on matched sessions:** If a matched historical session has
+`confidence !== 'high'`, render a second line under the row's primary content:
+```
+fontSize: 11, color: '#636366', fontStyle: 'italic'
+```
+Exact copy: `"Other meals may have affected these results"`
+Indented to align with the meal name (`paddingLeft: 0`, flows naturally beneath).
+
 **Section divider:** `borderTopWidth: 1, borderTopColor: '#2C2C2E', paddingTop: 8` — matches
 existing `matchingSlot` style already in `ExpandableCard.tsx` line 227. Do not change the
 container style, only replace the interior.
@@ -215,6 +232,13 @@ fontSize: 12, color: '#636366', fontStyle: 'italic'
 ```
 This is display only. Never pre-fill the field. (CONTEXT.md D-09, D-17)
 
+**Per-row confidence warning:** If a matched session has `confidence !== 'high'`, render a
+second line under the row primary content using the same style as MatchingSlot:
+```
+fontSize: 11, color: '#636366', fontStyle: 'italic'
+```
+Exact copy: `"Other meals may have affected these results"`
+
 **No results state:** List hidden entirely — no "no results" message. (CONTEXT.md D-10)
 
 ---
@@ -245,6 +269,8 @@ Legal constraint from REQUIREMENTS.md and CONTEXT.md D-16.
 | "Went well" indicator | `Went well` |
 | Insulin hint (MealLogScreen, after tap) | `({X}u last time)` |
 | No matches (hidden — no copy shown) | — |
+| Current session confidence warning | `"Other meals were logged in this session — results may be affected"` |
+| Matched row confidence warning | `"Other meals may have affected these results"` |
 | Error state (match load failure) | Silent failure — hide slot entirely, no error shown to user |
 
 ### Forbidden language (non-negotiable)
@@ -272,6 +298,10 @@ Source: REQUIREMENTS.md PATT-01, PATT-02; CONTEXT.md D-16, D-13; CLAUDE.md safet
 | Inline list (MealLogScreen) | Matches found | Up to 5 rows |
 | Insulin hint (MealLogScreen) | No match tapped | Nothing |
 | Insulin hint (MealLogScreen) | Match tapped | `(Xu last time)` adjacent to insulin label |
+| Current session warning (ExpandableCard) | `session.confidence === 'high'` | Nothing |
+| Current session warning (ExpandableCard) | `session.confidence !== 'high'` | Warning line above section header |
+| Per-row confidence warning | `match.session.confidence === 'high'` | Nothing |
+| Per-row confidence warning | `match.session.confidence !== 'high'` | Warning line under row primary content |
 
 ---
 
