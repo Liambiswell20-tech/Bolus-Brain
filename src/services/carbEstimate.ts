@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as FileSystem from 'expo-file-system/legacy';
+import { File } from 'expo-file-system';
 
 const ANTHROPIC_API_KEY = process.env.EXPO_PUBLIC_ANTHROPIC_API_KEY ?? '';
 
@@ -46,9 +46,7 @@ export async function estimateCarbsFromPhoto(photoUri: string): Promise<string> 
   if (remaining <= 0) throw new RateLimitError();
 
   // Read the photo as base64
-  const base64 = await FileSystem.readAsStringAsync(photoUri, {
-    encoding: FileSystem.EncodingType.Base64,
-  });
+  const base64 = await new File(photoUri).base64();
 
   const response = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
