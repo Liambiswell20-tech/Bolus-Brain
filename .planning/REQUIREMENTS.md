@@ -37,7 +37,7 @@
 ### Pattern Intelligence
 
 - [x] **PATT-01**: When viewing an expanded history card or logging a new meal, user sees a "You've eaten this before" section showing up to 5 matching past sessions — displayed as "Last time: [meal name], [units] units, [outcome badge]" with no advice or recommendation
-- [ ] **PATT-02**: Meals where glucose stayed in range (Green outcome) are marked as successful — when a matching meal appears in "You've eaten this before", the successful flag is surfaced ("This went well last time")
+- [x] **PATT-02**: Meals where glucose stayed in range (Green outcome) are marked as successful — when a matching meal appears in "You've eaten this before", the successful flag is surfaced ("This went well last time")
 - [ ] **PATT-03**: AI carb estimation tracks whether each estimate agreed with the actual outcome (glucose stayed in range vs went high/low) — a confidence score per meal is stored and updated after the curve completes; if the estimate was wrong last time and the user went low, a warning is shown before the next estimate for the same meal
 - [ ] **PATT-04**: Long-acting insulin logs capture a bedtime reading (target 10pm) and a morning reading (target 7am next day) as the overnight window — these are displayed on the insulin log card to show basal effectiveness
 
@@ -101,7 +101,7 @@
 | HIST-05 | Phase 2 | Complete |
 | HIST-06 | Phase 2 | Complete |
 | PATT-01 | Phase 3 | Complete |
-| PATT-02 | Phase 3 | Pending |
+| PATT-02 | Phase 3 | Complete |
 | HOME-01 | Phase 4 | Pending |
 | HOME-02 | Phase 4 | Pending |
 | HOME-03 | Phase 4 | Pending |
