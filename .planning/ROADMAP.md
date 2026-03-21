@@ -28,7 +28,13 @@ Milestone 2 transforms BolusBrain from a data-collection app into an intelligent
   5. `Meal.glucoseResponse` is documented as the canonical curve location in CLAUDE.md; the session write path is deprecated with a comment
   6. All `JSON.parse` calls in `storage.ts` are wrapped in try/catch — a corrupt AsyncStorage entry logs a warning and returns a safe default rather than crashing
   7. Unit tests exist for: HbA1c formula, outcome badge classification (all 5 states), and `saveMeal` session grouping (solo, join-existing, boundary)
-**Plans**: TBD
+**Plans**: 4 plans
+
+Plans:
+- [ ] 01-01-PLAN.md — Install Jest + jest-expo, extract classifyOutcome pure function, badge classification tests (6 states)
+- [ ] 01-02-PLAN.md — Fix GlucoseStore.sum drift (DEBT-02), extract buildGlucoseResponse (DEBT-03), wrap JSON.parse in try/catch (DEBT-07), HbA1c + session grouping tests (TEST-01)
+- [ ] 01-03-PLAN.md — Migrate carbEstimate.ts to File class API (DEBT-04), fetchGlucosesSince error logging (DEBT-05), canonical curve docs in CLAUDE.md and storage.ts (DEBT-06)
+- [ ] 01-04-PLAN.md — GitHub Actions CI workflow, phase verification checkpoint
 
 ### Phase 2: History Refactor and Core UX Components
 **Goal**: The history screen operates on the session data model, legacy meals are migrated to proper session records, new chart and animation libraries are correctly configured, and the reusable `GlucoseChart`, `ExpandableCard`, `OutcomeBadge`, and `DayGroupHeader` components exist — ready to be wired with data in Phase 3
@@ -95,7 +101,7 @@ Phases 1 → 2 → 3 → 4 → 5 execute in numeric order.
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Tech Debt and Foundation Fixes | 0/TBD | Not started | - |
+| 1. Tech Debt and Foundation Fixes | 0/4 | Planned | - |
 | 2. History Refactor and Core UX Components | 0/TBD | Not started | - |
 | 3. Intelligence Layer — Matching and Outcome Surfacing | 0/TBD | Not started | - |
 | 4. HomeScreen Glucose Graph and HbA1c Disclaimer | 0/TBD | Not started | - |
