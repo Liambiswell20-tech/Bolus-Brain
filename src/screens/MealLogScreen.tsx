@@ -274,8 +274,15 @@ export default function MealLogScreen() {
         <Pressable
           style={[styles.lateEntryToggle, lateEntry && styles.lateEntryToggleActive]}
           onPress={() => {
-            setLateEntry(v => !v);
-            if (lateEntry) setLoggedAt(new Date()); // reset to now when deactivated
+            if (lateEntry) {
+              // Deactivate — reset to now
+              setLateEntry(false);
+              setLoggedAt(new Date());
+            } else {
+              // Activate — open picker immediately
+              setLateEntry(true);
+              setShowTimePicker(true);
+            }
           }}
         >
           <Text style={[styles.lateEntryToggleText, lateEntry && styles.lateEntryToggleTextActive]}>
@@ -284,24 +291,35 @@ export default function MealLogScreen() {
         </Pressable>
 
         {lateEntry && (
-          <Pressable style={styles.timeDisplay} onPress={() => setShowTimePicker(true)}>
-            <Text style={styles.timeDisplayText}>
-              {loggedAt.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: true })}
-              {loggedAt.toDateString() !== new Date().toDateString() && ' (yesterday)'}
-            </Text>
-          </Pressable>
-        )}
-        {showTimePicker && (
-          <DateTimePicker
-            value={loggedAt}
-            mode="time"
-            is24Hour={false}
-            display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-            onChange={(_event: DateTimePickerEvent, date?: Date) => {
-              setShowTimePicker(false);
-              if (date) setLoggedAt(applyLateEntryTime(date));
-            }}
-          />
+          <>
+            <Pressable style={styles.timeRow} onPress={() => setShowTimePicker(true)}>
+              <Text style={styles.timeText}>
+                {loggedAt.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false })}
+                {loggedAt.toDateString() !== new Date().toDateString() && ' (yesterday)'}
+              </Text>
+              <Text style={styles.timeChange}>Change</Text>
+            </Pressable>
+            {showTimePicker && (
+              <View style={styles.pickerContainer}>
+                <DateTimePicker
+                  value={loggedAt}
+                  mode="time"
+                  is24Hour
+                  display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                  themeVariant="dark"
+                  onChange={(_event: DateTimePickerEvent, date?: Date) => {
+                    if (Platform.OS !== 'ios') setShowTimePicker(false);
+                    if (date) setLoggedAt(applyLateEntryTime(date));
+                  }}
+                />
+                {Platform.OS === 'ios' && (
+                  <Pressable onPress={() => setShowTimePicker(false)} style={styles.pickerDone}>
+                    <Text style={styles.pickerDoneText}>Done</Text>
+                  </Pressable>
+                )}
+              </View>
+            )}
+          </>
         )}
 
         {/* Save */}
@@ -403,8 +421,12 @@ const styles = StyleSheet.create({
   lateEntryToggleActive: { borderColor: '#0A84FF', backgroundColor: '#0A1A3A' },
   lateEntryToggleText: { fontSize: 14, color: '#8E8E93' },
   lateEntryToggleTextActive: { color: '#0A84FF', fontWeight: '600' },
-  timeDisplay: { alignSelf: 'flex-start', paddingVertical: 4, marginBottom: 16 },
-  timeDisplayText: { fontSize: 15, color: '#0A84FF', fontWeight: '600' },
+  timeRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#1C1C1E', borderRadius: 12, padding: 16, marginBottom: 12 },
+  timeText: { color: '#FFFFFF', fontSize: 17 },
+  timeChange: { color: '#0A84FF', fontSize: 15 },
+  pickerContainer: { backgroundColor: '#1C1C1E', borderRadius: 12, marginBottom: 24, overflow: 'hidden' },
+  pickerDone: { alignItems: 'flex-end', paddingHorizontal: 16, paddingBottom: 12 },
+  pickerDoneText: { color: '#0A84FF', fontSize: 15, fontWeight: '600' },
   input: {
     backgroundColor: '#1C1C1E', color: '#FFFFFF',
     fontSize: 17, padding: 16, borderRadius: 12, marginBottom: 24,

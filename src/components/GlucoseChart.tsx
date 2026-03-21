@@ -9,11 +9,9 @@ const CHART_PADDING = 32; // 16px padding each side to match card interior
 export function GlucoseChart({ response, height = 120 }: GlucoseChartProps) {
   const chartWidth = SCREEN_WIDTH - CHART_PADDING - 64; // 64 for y-axis label area
 
-  // Convert readings to gifted-charts data format
-  // readings are every 5 minutes; keep value only (no x-axis labels — too crowded)
-  const data = response.readings.map(r => ({ value: r.mmol }));
+  const rawValues = response.readings.map(r => r.mmol);
 
-  if (data.length < 2) {
+  if (rawValues.length < 2) {
     return (
       <View style={[styles.container, { height }]}>
         <Text style={styles.noData}>Not enough data</Text>
@@ -21,9 +19,29 @@ export function GlucoseChart({ response, height = 120 }: GlucoseChartProps) {
     );
   }
 
-  // Y-axis: max is at least 14.0 for consistent scale
-  const maxVal = Math.max(...data.map(d => d.value));
-  const yMax = Math.max(14.0, Math.ceil((maxVal + 0.5) * 2) / 2);
+  const minVal = Math.min(...rawValues);
+  const maxVal = Math.max(...rawValues);
+
+  // Y-axis floor: 1 below data minimum (floor to nearest 1.0), never below 2.0
+  // This makes the curve fill the chart height rather than being a tiny line near the top
+  const yMin = Math.max(2.0, Math.floor(minVal) - 1);
+  // Y-axis ceiling: at least 14.0 or 1 above actual max
+  const yMax = Math.max(14.0, Math.ceil(maxVal) + 1);
+  const range = yMax - yMin;
+
+  // gifted-charts has no minValue prop — shift all values down by yMin
+  const data = rawValues.map(v => ({ value: v - yMin }));
+
+  // Reference lines adjusted for the same shift (clamp to 0 if below visible range)
+  const ref1Pos = Math.max(0, 3.9 - yMin);   // hypo line (red)
+  const ref2Pos = Math.max(0, 10.0 - yMin);  // high line (orange)
+
+  // Y-axis labels showing actual glucose values
+  const sectionCount = 4;
+  const step = range / sectionCount;
+  const yAxisLabelTexts = Array.from({ length: sectionCount + 1 }, (_, i) =>
+    (yMin + i * step).toFixed(1)
+  );
 
   return (
     <View style={styles.container}>
@@ -33,15 +51,15 @@ export function GlucoseChart({ response, height = 120 }: GlucoseChartProps) {
         width={chartWidth}
         color="#30D158"
         thickness={2}
-        curved
         hideDataPoints
-        maxValue={yMax}
-        noOfSections={4}
+        maxValue={range}
+        noOfSections={sectionCount}
+        yAxisLabelTexts={yAxisLabelTexts}
         yAxisColor="#2C2C2E"
         xAxisColor="#2C2C2E"
         yAxisTextStyle={styles.axisText}
         showReferenceLine1
-        referenceLine1Position={3.9}
+        referenceLine1Position={ref1Pos}
         referenceLine1Config={{
           color: '#FF3B30',
           thickness: 1,
@@ -49,7 +67,7 @@ export function GlucoseChart({ response, height = 120 }: GlucoseChartProps) {
           dashGap: 4,
         }}
         showReferenceLine2
-        referenceLine2Position={10.0}
+        referenceLine2Position={ref2Pos}
         referenceLine2Config={{
           color: '#FF9500',
           thickness: 1,
