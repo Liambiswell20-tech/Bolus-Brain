@@ -10,6 +10,7 @@ const CONFIG: Record<Exclude<OutcomeBadgeType, 'NONE'>, BadgeConfig> = {
   ORANGE:     { bg: '#2A1A00', text: '#FF9500', label: 'Went high' },
   DARK_AMBER: { bg: '#2A1200', text: '#CC7A00', label: 'Still high' },
   RED:        { bg: '#2A0A0A', text: '#FF3B30', label: 'Out of range' },
+  HYPO:       { bg: '#1A0A2A', text: '#BF5AF2', label: 'Went low' },
   PENDING:    { bg: '#1A1A2A', text: '#636366', label: 'Pending' },
 };
 

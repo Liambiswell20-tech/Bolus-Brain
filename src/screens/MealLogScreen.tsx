@@ -97,7 +97,7 @@ export default function MealLogScreen() {
           .filter(s =>
             s.glucoseResponse !== null &&
             !s.glucoseResponse.isPartial &&
-            s.meals.some(m => m.name.toLowerCase().includes(query))
+            (s.meals[0]?.name.toLowerCase().includes(query) ?? false)
           )
           .sort((a, b) => new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime())
           .slice(0, 5)
@@ -309,8 +309,12 @@ export default function MealLogScreen() {
               const dateStr = new Date(match.session.startedAt).toLocaleDateString('en-GB', {
                 weekday: 'short', day: 'numeric', month: 'short',
               });
-              const peak = match.session.glucoseResponse!.peakGlucose;
               const badge = classifyOutcome(match.session.glucoseResponse);
+              const isHypo = badge === 'HYPO';
+              const peakOrLow = isHypo
+                ? Math.min(...match.session.glucoseResponse!.readings.map(r => r.mmol))
+                : match.session.glucoseResponse!.peakGlucose;
+              const peakOrLowLabel = isHypo ? 'low' : 'peak';
               const rowConfidenceLow = match.session.confidence !== 'high';
 
               return (
@@ -325,14 +329,14 @@ export default function MealLogScreen() {
                   }}
                   hitSlop={8}
                 >
-                  {/* Row primary: name + units + date + peak */}
+                  {/* Row primary: name + units + date + peak/low */}
                   <View style={styles.liveMatchRowPrimary}>
                     <Text style={styles.liveMatchRowName} numberOfLines={1}>
                       {firstName} — {sessionInsulin}u
                     </Text>
                     <Text style={styles.liveMatchRowDate}>{dateStr}</Text>
-                    <Text style={[styles.liveMatchRowPeak, { color: glucoseColor(peak) }]}>
-                      peak {peak.toFixed(1)} mmol/L
+                    <Text style={[styles.liveMatchRowPeak, { color: glucoseColor(peakOrLow) }]}>
+                      {peakOrLowLabel} {peakOrLow.toFixed(1)} mmol/L
                     </Text>
                   </View>
                   {/* Row secondary: badge + Went well */}

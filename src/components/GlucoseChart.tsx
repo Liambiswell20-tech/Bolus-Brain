@@ -1,13 +1,25 @@
 import React from 'react';
 import { Dimensions, StyleSheet, Text, View } from 'react-native';
-import { LineChart } from 'react-native-gifted-charts';
+import Svg, { G, Line, Text as SvgText } from 'react-native-svg';
 import type { GlucoseChartProps } from './types';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
-const CHART_PADDING = 32; // 16px padding each side to match card interior
+const CHART_PADDING = 32; // 16px each side, matches card interior
+const Y_AXIS_WIDTH = 36;
+const PADDING_TOP = 8;
+const PADDING_BOTTOM = 8;
+const PADDING_RIGHT = 4;
+
+function segmentColor(mmol: number): string {
+  if (mmol < 3.9) return '#FF3B30';  // hypo — red
+  if (mmol > 10.0) return '#FF9500'; // high — orange
+  return '#30D158';                   // in range — green
+}
 
 export function GlucoseChart({ response, height = 120 }: GlucoseChartProps) {
-  const chartWidth = SCREEN_WIDTH - CHART_PADDING - 64; // 64 for y-axis label area
+  const drawWidth = SCREEN_WIDTH - CHART_PADDING - Y_AXIS_WIDTH - PADDING_RIGHT;
+  const drawHeight = height - PADDING_TOP - PADDING_BOTTOM;
+  const totalSvgWidth = Y_AXIS_WIDTH + drawWidth + PADDING_RIGHT;
 
   const rawValues = response.readings.map(r => r.mmol);
 
@@ -22,63 +34,83 @@ export function GlucoseChart({ response, height = 120 }: GlucoseChartProps) {
   const minVal = Math.min(...rawValues);
   const maxVal = Math.max(...rawValues);
 
-  // Y-axis floor: 1 below data minimum (floor to nearest 1.0), never below 2.0
-  // This makes the curve fill the chart height rather than being a tiny line near the top
   const yMin = Math.max(2.0, Math.floor(minVal) - 1);
-  // Y-axis ceiling: at least 14.0 or 1 above actual max
   const yMax = Math.max(14.0, Math.ceil(maxVal) + 1);
   const range = yMax - yMin;
 
-  // gifted-charts has no minValue prop — shift all values down by yMin
-  const data = rawValues.map(v => ({ value: v - yMin }));
+  function toY(mmol: number): number {
+    // Higher glucose → smaller y (top of chart)
+    return PADDING_TOP + drawHeight - ((mmol - yMin) / range) * drawHeight;
+  }
 
-  // Reference lines adjusted for the same shift (clamp to 0 if below visible range)
-  const ref1Pos = Math.max(0, 3.9 - yMin);   // hypo line (red)
-  const ref2Pos = Math.max(0, 10.0 - yMin);  // high line (orange)
+  function toX(i: number): number {
+    // First point at 0, last point exactly at drawWidth
+    return (i / (rawValues.length - 1)) * drawWidth;
+  }
 
-  // Y-axis labels showing actual glucose values
+  // Per-segment coloring — color by midpoint average of the two endpoints
+  const segments = rawValues.slice(0, -1).map((v1, i) => {
+    const v2 = rawValues[i + 1];
+    return {
+      x1: toX(i),   y1: toY(v1),
+      x2: toX(i + 1), y2: toY(v2),
+      color: segmentColor((v1 + v2) / 2),
+    };
+  });
+
+  const hypoY = toY(3.9);
+  const highY = toY(10.0);
+
   const sectionCount = 4;
   const step = range / sectionCount;
-  const yAxisLabelTexts = Array.from({ length: sectionCount + 1 }, (_, i) =>
-    (yMin + i * step).toFixed(1)
-  );
+  const yLabels = Array.from({ length: sectionCount + 1 }, (_, i) => ({
+    label: (yMin + i * step).toFixed(1),
+    y: toY(yMin + i * step),
+  }));
 
   return (
-    <View style={styles.container}>
-      <LineChart
-        data={data}
-        height={height}
-        width={chartWidth}
-        color="#30D158"
-        thickness={2}
-        hideDataPoints
-        maxValue={range}
-        noOfSections={sectionCount}
-        yAxisLabelTexts={yAxisLabelTexts}
-        yAxisColor="#2C2C2E"
-        xAxisColor="#2C2C2E"
-        yAxisTextStyle={styles.axisText}
-        showReferenceLine1
-        referenceLine1Position={ref1Pos}
-        referenceLine1Config={{
-          color: '#FF3B30',
-          thickness: 1,
-          dashWidth: 4,
-          dashGap: 4,
-        }}
-        showReferenceLine2
-        referenceLine2Position={ref2Pos}
-        referenceLine2Config={{
-          color: '#FF9500',
-          thickness: 1,
-          dashWidth: 4,
-          dashGap: 4,
-        }}
-        backgroundColor="#1C1C1E"
-        initialSpacing={4}
-        endSpacing={4}
-        isAnimated={false}
-      />
+    <View style={[styles.container, { height }]}>
+      <Svg width={totalSvgWidth} height={height}>
+        {/* Y-axis labels */}
+        {yLabels.map((l, i) => (
+          <SvgText
+            key={i}
+            x={Y_AXIS_WIDTH - 4}
+            y={l.y + 3}
+            textAnchor="end"
+            fontSize={9}
+            fill="#636366"
+          >
+            {l.label}
+          </SvgText>
+        ))}
+
+        {/* Chart drawing area, offset by Y_AXIS_WIDTH */}
+        <G x={Y_AXIS_WIDTH}>
+          {/* Hypo reference line — 3.9 mmol/L */}
+          <Line
+            x1={0} y1={hypoY} x2={drawWidth} y2={hypoY}
+            stroke="#FF3B30" strokeWidth={1} strokeDasharray="4 4"
+          />
+          {/* High reference line — 10.0 mmol/L */}
+          <Line
+            x1={0} y1={highY} x2={drawWidth} y2={highY}
+            stroke="#FF9500" strokeWidth={1} strokeDasharray="4 4"
+          />
+          {/* Glucose curve — one segment per reading pair */}
+          {segments.map((seg, i) => (
+            <Line
+              key={i}
+              x1={seg.x1} y1={seg.y1}
+              x2={seg.x2} y2={seg.y2}
+              stroke={seg.color}
+              strokeWidth={2}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          ))}
+        </G>
+      </Svg>
       {response.isPartial && (
         <Text style={styles.partialNote}>Curve still building</Text>
       )}
@@ -91,10 +123,6 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     borderRadius: 8,
     backgroundColor: '#1C1C1E',
-  },
-  axisText: {
-    color: '#636366',
-    fontSize: 9,
   },
   noData: {
     color: '#636366',

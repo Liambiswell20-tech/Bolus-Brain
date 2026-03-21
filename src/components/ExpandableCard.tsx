@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import {
-  ActivityIndicator,
   Image,
   LayoutAnimation,
   Platform,
@@ -13,7 +12,6 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../App';
-import { fetchAndStoreCurveForMeal } from '../services/storage';
 import type { SessionWithMeals } from '../services/storage';
 import { classifyOutcome } from '../utils/outcomeClassifier';
 import { glucoseColor } from '../utils/glucoseColor';
@@ -46,10 +44,9 @@ function minsUntilReady(loggedAt: string): number {
   return Math.ceil((THREE_HOURS_MS - elapsed) / 60000);
 }
 
-export function ExpandableCard({ meal, onRefresh, matchingSlot, allSessions }: ExpandableCardProps) {
+export function ExpandableCard({ meal, onRefresh: _onRefresh, matchingSlot, allSessions }: ExpandableCardProps) {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const [expanded, setExpanded] = useState(false);
-  const [fetching, setFetching] = useState(false);
   const [matchSummary, setMatchSummary] = useState<MatchSummary | null>(null);
 
   const badge = classifyOutcome(meal.glucoseResponse);
@@ -67,16 +64,6 @@ export function ExpandableCard({ meal, onRefresh, matchingSlot, allSessions }: E
         : null;
       const computed = targetSession ? findSimilarSessions(targetSession, allSessions) : null;
       setMatchSummary(computed);
-    }
-  }
-
-  async function handleFetchCurve() {
-    setFetching(true);
-    try {
-      await fetchAndStoreCurveForMeal(meal.id);
-      onRefresh();
-    } finally {
-      setFetching(false);
     }
   }
 
@@ -133,7 +120,7 @@ export function ExpandableCard({ meal, onRefresh, matchingSlot, allSessions }: E
         <View style={styles.expandedContent}>
           {meal.glucoseResponse ? (
             <>
-              {/* Stats row: Start / Peak / End */}
+              {/* Stats row: Start / Peak (or Low for HYPO) / End */}
               <View style={styles.statsRow}>
                 <View style={styles.stat}>
                   <Text style={styles.statLabel}>START</Text>
@@ -142,13 +129,23 @@ export function ExpandableCard({ meal, onRefresh, matchingSlot, allSessions }: E
                   </Text>
                   <Text style={styles.statUnit}>mmol/L</Text>
                 </View>
-                <View style={styles.stat}>
-                  <Text style={styles.statLabel}>PEAK</Text>
-                  <Text style={[styles.statValue, { color: glucoseColor(meal.glucoseResponse.peakGlucose) }]}>
-                    {meal.glucoseResponse.peakGlucose.toFixed(1)}
-                  </Text>
-                  <Text style={styles.statUnit}>mmol/L</Text>
-                </View>
+                {badge === 'HYPO' ? (
+                  <View style={styles.stat}>
+                    <Text style={styles.statLabel}>LOW</Text>
+                    <Text style={[styles.statValue, { color: '#FF3B30' }]}>
+                      {Math.min(...meal.glucoseResponse.readings.map(r => r.mmol)).toFixed(1)}
+                    </Text>
+                    <Text style={styles.statUnit}>mmol/L</Text>
+                  </View>
+                ) : (
+                  <View style={styles.stat}>
+                    <Text style={styles.statLabel}>PEAK</Text>
+                    <Text style={[styles.statValue, { color: glucoseColor(meal.glucoseResponse.peakGlucose) }]}>
+                      {meal.glucoseResponse.peakGlucose.toFixed(1)}
+                    </Text>
+                    <Text style={styles.statUnit}>mmol/L</Text>
+                  </View>
+                )}
                 <View style={styles.stat}>
                   <Text style={styles.statLabel}>{meal.glucoseResponse.isPartial ? 'NOW' : '3HR'}</Text>
                   <Text style={[styles.statValue, { color: glucoseColor(meal.glucoseResponse.endGlucose) }]}>
@@ -162,39 +159,41 @@ export function ExpandableCard({ meal, onRefresh, matchingSlot, allSessions }: E
               {meal.glucoseResponse.readings.length >= 2 && (
                 <GlucoseChart response={meal.glucoseResponse} height={120} />
               )}
-
-              {/* Refresh button for partial curves */}
-              {meal.glucoseResponse.isPartial && complete && (
-                <Pressable style={styles.refreshBtn} onPress={handleFetchCurve} disabled={fetching}>
-                  {fetching
-                    ? <ActivityIndicator size="small" color="#0A84FF" />
-                    : <Text style={styles.refreshBtnText}>Refresh curve</Text>}
-                </Pressable>
-              )}
             </>
-          ) : complete ? (
-            <Pressable style={styles.fetchBtn} onPress={handleFetchCurve} disabled={fetching}>
-              {fetching
-                ? <ActivityIndicator size="small" color="#000" />
-                : <Text style={styles.fetchBtnText}>Load glucose curve</Text>}
-            </Pressable>
-          ) : (
+          ) : !complete ? (
             <View style={styles.pendingRow}>
               <Text style={styles.pendingText}>
                 Curve ready in ~{minsLeft} min{minsLeft !== 1 ? 's' : ''}
               </Text>
             </View>
-          )}
+          ) : null}
 
-          {/* Phase 3: MatchingSlot — real data or silence */}
+          {/* YOU'VE EATEN THIS BEFORE — single best match */}
           {(() => {
-            if (!matchSummary || matchSummary.matches.length < 2) return null;
+            if (!matchSummary || matchSummary.matches.length < 1) return null;
 
-            // Determine if current card's own session has low confidence
+            const match = matchSummary.matches[0];
+
             const ownSession = meal.sessionId
               ? allSessions.find(s => s.id === meal.sessionId) ?? null
               : null;
             const ownConfidenceLow = ownSession?.confidence !== 'high';
+
+            const matchBadge = classifyOutcome(match.session.glucoseResponse);
+            const isMatchHypo = matchBadge === 'HYPO';
+            const matchPeakOrLow = isMatchHypo
+              ? Math.min(...match.session.glucoseResponse!.readings.map(r => r.mmol))
+              : match.session.glucoseResponse!.peakGlucose;
+            const matchPeakOrLowLabel = isMatchHypo ? 'low' : 'peak';
+
+            const sessionInsulin = match.session.meals.reduce(
+              (sum, m) => sum + (m.insulinUnits ?? 0), 0
+            );
+            const firstName = match.session.meals[0]?.name ?? '';
+            const dateStr = new Date(match.session.startedAt).toLocaleDateString('en-GB', {
+              weekday: 'short', day: 'numeric', month: 'short',
+            });
+            const rowConfidenceLow = match.session.confidence !== 'high';
 
             return (
               <View style={styles.matchingSlot}>
@@ -204,51 +203,31 @@ export function ExpandableCard({ meal, onRefresh, matchingSlot, allSessions }: E
                   </Text>
                 )}
                 <Text style={styles.matchingHeader}>YOU'VE EATEN THIS BEFORE</Text>
-                {matchSummary.matches.map((match, index) => {
-                  const sessionInsulin = match.session.meals.reduce(
-                    (sum, m) => sum + (m.insulinUnits ?? 0), 0
-                  );
-                  const firstName = match.session.meals[0]?.name ?? '';
-                  const dateStr = new Date(match.session.startedAt).toLocaleDateString('en-GB', {
-                    weekday: 'short', day: 'numeric', month: 'short',
-                  });
-                  const peak = match.session.glucoseResponse!.peakGlucose;
-                  const badge = classifyOutcome(match.session.glucoseResponse);
-                  const rowConfidenceLow = match.session.confidence !== 'high';
-
-                  return (
-                    <View key={match.session.id} style={[
-                      styles.matchRow,
-                      index > 0 && styles.matchRowDivider,
-                    ]}>
-                      {/* Row primary: name + units + date + peak */}
-                      <View style={styles.matchRowPrimary}>
-                        <Text style={styles.matchRowName} numberOfLines={1}>
-                          {firstName} — {sessionInsulin}u
-                        </Text>
-                        <Text style={styles.matchRowDate}>{dateStr}</Text>
-                        <Text style={[styles.matchRowPeak, { color: glucoseColor(peak) }]}>
-                          peak {peak.toFixed(1)} mmol/L
-                        </Text>
+                <View style={styles.matchRow}>
+                  <View style={styles.matchRowPrimary}>
+                    <Text style={styles.matchRowName} numberOfLines={1}>
+                      {firstName} — {sessionInsulin}u
+                    </Text>
+                    <Text style={styles.matchRowDate}>{dateStr}</Text>
+                    <Text style={[styles.matchRowPeak, { color: glucoseColor(matchPeakOrLow) }]}>
+                      {matchPeakOrLowLabel} {matchPeakOrLow.toFixed(1)} mmol/L
+                    </Text>
+                  </View>
+                  <View style={styles.matchRowBadgeRow}>
+                    <OutcomeBadge badge={matchBadge} size="small" />
+                    {matchBadge === 'GREEN' && (
+                      <View style={styles.wentWellIndicator}>
+                        <View style={styles.wentWellDot} />
+                        <Text style={styles.wentWellText}>Went well</Text>
                       </View>
-                      {/* Row secondary: badge + "Went well" indicator */}
-                      <View style={styles.matchRowBadgeRow}>
-                        <OutcomeBadge badge={badge} size="small" />
-                        {badge === 'GREEN' && (
-                          <View style={styles.wentWellIndicator}>
-                            <View style={styles.wentWellDot} />
-                            <Text style={styles.wentWellText}>Went well</Text>
-                          </View>
-                        )}
-                      </View>
-                      {rowConfidenceLow && (
-                        <Text style={styles.matchingConfidenceWarning}>
-                          Other meals may have affected these results
-                        </Text>
-                      )}
-                    </View>
-                  );
-                })}
+                    )}
+                  </View>
+                  {rowConfidenceLow && (
+                    <Text style={styles.matchingConfidenceWarning}>
+                      Other meals may have affected these results
+                    </Text>
+                  )}
+                </View>
               </View>
             );
           })()}
@@ -288,15 +267,8 @@ const styles = StyleSheet.create({
 
   pendingRow: { alignItems: 'center', paddingVertical: 4 },
   pendingText: { fontSize: 13, color: '#636366', fontStyle: 'italic' },
-  fetchBtn: { backgroundColor: '#30D158', borderRadius: 10, padding: 12, alignItems: 'center' },
-  fetchBtnText: { color: '#000', fontWeight: '600', fontSize: 14 },
-  refreshBtn: { alignItems: 'center', padding: 8 },
-  refreshBtnText: { color: '#0A84FF', fontSize: 14 },
 
   matchingSlot: { borderTopWidth: 1, borderTopColor: '#2C2C2E', paddingTop: 8 },
-  matchingPlaceholder: { fontSize: 13, color: '#3A3A3C', fontStyle: 'italic' },
-
-  // Matching slot styles (Phase 3)
   matchingHeader: {
     fontSize: 12,
     fontWeight: '600',
@@ -311,14 +283,7 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
     marginBottom: 4,
   },
-  matchRow: {
-    gap: 4,
-    paddingVertical: 8,
-  },
-  matchRowDivider: {
-    borderTopWidth: 1,
-    borderTopColor: '#2C2C2E',
-  },
+  matchRow: { gap: 4, paddingVertical: 4 },
   matchRowPrimary: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -331,34 +296,15 @@ const styles = StyleSheet.create({
     flex: 1,
     minWidth: 0,
   },
-  matchRowDate: {
-    fontSize: 12,
-    color: '#636366',
-  },
-  matchRowPeak: {
-    fontSize: 12,
-    // color applied inline from glucoseColor()
-  },
+  matchRowDate: { fontSize: 12, color: '#636366' },
+  matchRowPeak: { fontSize: 12 },
   matchRowBadgeRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
     marginTop: 2,
   },
-  wentWellIndicator: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  wentWellDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#30D158',
-  },
-  wentWellText: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: '#30D158',
-  },
+  wentWellIndicator: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  wentWellDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#30D158' },
+  wentWellText: { fontSize: 11, fontWeight: '600', color: '#30D158' },
 });
