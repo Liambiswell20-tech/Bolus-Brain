@@ -6,7 +6,7 @@ Milestone 2 transforms BolusBrain from a data-collection app into an intelligent
 
 ## Phases
 
-- [ ] **Phase 1: Tech Debt and Foundation Fixes** - Eliminate data bugs and fragile error handling that would corrupt new features built on top of them
+- [x] **Phase 1: Tech Debt and Foundation Fixes** - Eliminate data bugs and fragile error handling that would corrupt new features built on top of them (completed 2026-03-21)
 - [ ] **Phase 2: History Refactor and Core UX Components** - Migrate history screen to session model and build the reusable components all intelligence features depend on
 - [ ] **Phase 3: Intelligence Layer — Matching and Outcome Surfacing** - Wire the existing matching engine into history cards and meal log screen
 - [ ] **Phase 4: HomeScreen Glucose Graph and HbA1c Disclaimer** - Expose full-day glucose graph and surface HbA1c with appropriate disclaimer
@@ -34,7 +34,7 @@ Plans:
 - [x] 01-01-PLAN.md — Install Jest + jest-expo, extract classifyOutcome pure function, badge classification tests (6 states)
 - [x] 01-02-PLAN.md — Fix GlucoseStore.sum drift (DEBT-02), extract buildGlucoseResponse (DEBT-03), wrap JSON.parse in try/catch (DEBT-07), HbA1c + session grouping tests (TEST-01)
 - [x] 01-03-PLAN.md — Migrate carbEstimate.ts to File class API (DEBT-04), fetchGlucosesSince error logging (DEBT-05), canonical curve docs in CLAUDE.md and storage.ts (DEBT-06)
-- [ ] 01-04-PLAN.md — GitHub Actions CI workflow, phase verification checkpoint
+- [x] 01-04-PLAN.md — GitHub Actions CI workflow, phase verification checkpoint
 
 ### Phase 2: History Refactor and Core UX Components
 **Goal**: The history screen operates on the session data model, legacy meals are migrated to proper session records, new chart and animation libraries are correctly configured, and the reusable `GlucoseChart`, `ExpandableCard`, `OutcomeBadge`, and `DayGroupHeader` components exist — ready to be wired with data in Phase 3
@@ -101,7 +101,7 @@ Phases 1 → 2 → 3 → 4 → 5 execute in numeric order.
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Tech Debt and Foundation Fixes | 3/4 | In Progress|  |
+| 1. Tech Debt and Foundation Fixes | 4/4 | Complete   | 2026-03-21 |
 | 2. History Refactor and Core UX Components | 0/TBD | Not started | - |
 | 3. Intelligence Layer — Matching and Outcome Surfacing | 0/TBD | Not started | - |
 | 4. HomeScreen Glucose Graph and HbA1c Disclaimer | 0/TBD | Not started | - |

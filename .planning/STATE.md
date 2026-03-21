@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: unknown
-stopped_at: Completed 01-02-PLAN.md
-last_updated: "2026-03-21T10:35:14.744Z"
+stopped_at: Completed 01-04-PLAN.md — Phase 1 fully complete
+last_updated: "2026-03-21T10:42:24.547Z"
 progress:
   total_phases: 6
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 7
-  completed_plans: 3
+  completed_plans: 4
 ---
 
 # Project State
@@ -49,6 +49,7 @@ Plan: 4 of 4
 | Phase 01-tech-debt-and-foundation-fixes P01 | 12 | 2 tasks | 3 files |
 | Phase 01 P03 | 8 | 2 tasks | 4 files |
 | Phase 01 P02 | 3 | 2 tasks | 2 files |
+| Phase 01 P04 | 5 | 2 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -67,6 +68,8 @@ Key constraints affecting this milestone:
 - [Phase 01]: fetchGlucosesSince warns but does not throw on non-OK — app must keep working even if glucose store refresh fails
 - [Phase 01]: HbA1c mmolMol for avgMmol=7.0 is 53 (plan stated 52 — arithmetic error in plan; formula Math.round(10.929 * 4.85) = 53)
 - [Phase 01]: buildGlucoseResponse uses nowMs < (fromMs + THREE_HOURS_MS) for isPartial — avoids coupling to caller's toMs variable
+- [Phase 01]: watchAll=false passed explicitly in CI run command — jest-expo can hang in non-TTY environments without it
+- [Phase 01]: npm ci used in CI workflow for reproducible locked dependency installs
 
 ### Pending Todos
 
@@ -82,6 +85,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-21T10:35:14.739Z
-Stopped at: Completed 01-02-PLAN.md
+Last session: 2026-03-21T10:42:24.541Z
+Stopped at: Completed 01-04-PLAN.md — Phase 1 fully complete
 Resume file: None
