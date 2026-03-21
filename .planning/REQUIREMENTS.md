@@ -8,12 +8,12 @@
 ### Tech Debt
 
 - [x] **DEBT-01**: Nightscout URL and token moved to `.env` as `EXPO_PUBLIC_NIGHTSCOUT_URL` and `EXPO_PUBLIC_NIGHTSCOUT_TOKEN` — completed in commit 76b6bc5
-- [ ] **DEBT-02**: `GlucoseStore.sum` recomputed from `readings` array on every `updateGlucoseStore` call — eliminates silent HbA1c drift
-- [ ] **DEBT-03**: `buildGlucoseResponse()` extracted as a shared pure function used by both `fetchAndStoreCurveForMeal` and `_fetchCurveForSession` — no more duplicate logic
+- [x] **DEBT-02**: `GlucoseStore.sum` recomputed from `readings` array on every `updateGlucoseStore` call — eliminates silent HbA1c drift
+- [x] **DEBT-03**: `buildGlucoseResponse()` extracted as a shared pure function used by both `fetchAndStoreCurveForMeal` and `_fetchCurveForSession` — no more duplicate logic
 - [x] **DEBT-04**: `carbEstimate.ts` migrated from `expo-file-system/legacy` to current `expo-file-system` API — no future SDK upgrade breakage
 - [x] **DEBT-05**: `fetchGlucosesSince` throws or logs on non-OK HTTP response — silent `return []` replaced with explicit error logging so GlucoseStore staleness is visible
 - [x] **DEBT-06**: `Meal.glucoseResponse` documented as the canonical curve location in CLAUDE.md; `_fetchCurveForSession` write path deprecated with inline comment explaining the canonical path
-- [ ] **DEBT-07**: All `JSON.parse` calls in `storage.ts` wrapped in try/catch — corrupt AsyncStorage entries log a warning and return safe defaults rather than crashing the app
+- [x] **DEBT-07**: All `JSON.parse` calls in `storage.ts` wrapped in try/catch — corrupt AsyncStorage entries log a warning and return safe defaults rather than crashing the app
 
 ### Test Foundation
 
@@ -88,12 +88,12 @@
 | Requirement | Phase | Status |
 |-------------|-------|--------|
 | DEBT-01 | Phase 1 | Complete (commit 76b6bc5) |
-| DEBT-02 | Phase 1 | Pending |
-| DEBT-03 | Phase 1 | Pending |
+| DEBT-02 | Phase 1 | Complete |
+| DEBT-03 | Phase 1 | Complete |
 | DEBT-04 | Phase 1 | Complete |
 | DEBT-05 | Phase 1 | Complete |
 | DEBT-06 | Phase 1 | Complete |
-| DEBT-07 | Phase 1 | Pending |
+| DEBT-07 | Phase 1 | Complete |
 | TEST-01 | Phase 1 | Complete |
 | HIST-01 | Phase 2 | Pending |
 | HIST-02 | Phase 2 | Pending |

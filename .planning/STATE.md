@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: unknown
-stopped_at: Completed 01-03-PLAN.md
-last_updated: "2026-03-21T10:33:20.461Z"
+stopped_at: Completed 01-02-PLAN.md
+last_updated: "2026-03-21T10:35:14.744Z"
 progress:
   total_phases: 6
   completed_phases: 0
   total_plans: 7
-  completed_plans: 2
+  completed_plans: 3
 ---
 
 # Project State
@@ -24,7 +24,7 @@ See: .planning/PROJECT.md (updated 2026-03-18)
 ## Current Position
 
 Phase: 01 (tech-debt-and-foundation-fixes) — EXECUTING
-Plan: 3 of 4
+Plan: 4 of 4
 
 ## Performance Metrics
 
@@ -48,6 +48,7 @@ Plan: 3 of 4
 *Updated after each plan completion*
 | Phase 01-tech-debt-and-foundation-fixes P01 | 12 | 2 tasks | 3 files |
 | Phase 01 P03 | 8 | 2 tasks | 4 files |
+| Phase 01 P02 | 3 | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -64,6 +65,8 @@ Key constraints affecting this milestone:
 - [Phase 01]: Added testMatch scope to src/ in jest config — default discovery picked up .claude/skills test files causing 17 false failures
 - [Phase 01]: Used File class from expo-file-system (not legacy) — readAsStringAsync is a stub that throws at runtime in SDK 54
 - [Phase 01]: fetchGlucosesSince warns but does not throw on non-OK — app must keep working even if glucose store refresh fails
+- [Phase 01]: HbA1c mmolMol for avgMmol=7.0 is 53 (plan stated 52 — arithmetic error in plan; formula Math.round(10.929 * 4.85) = 53)
+- [Phase 01]: buildGlucoseResponse uses nowMs < (fromMs + THREE_HOURS_MS) for isPartial — avoids coupling to caller's toMs variable
 
 ### Pending Todos
 
@@ -79,6 +82,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-21T10:33:20.455Z
-Stopped at: Completed 01-03-PLAN.md
+Last session: 2026-03-21T10:35:14.739Z
+Stopped at: Completed 01-02-PLAN.md
 Resume file: None
