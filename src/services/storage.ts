@@ -413,13 +413,20 @@ export async function loadSessionsWithMeals(): Promise<SessionWithMeals[]> {
   const mealMap = new Map(meals.map(m => [m.id, m]));
   const mealIdsInSessions = new Set(sessions.flatMap(s => s.mealIds));
 
-  const real: SessionWithMeals[] = sessions.map(session => ({
-    ...session,
-    meals: session.mealIds
+  const real: SessionWithMeals[] = sessions.map(session => {
+    const meals = session.mealIds
       .map(id => mealMap.get(id))
       .filter((m): m is Meal => !!m)
-      .sort((a, b) => new Date(a.loggedAt).getTime() - new Date(b.loggedAt).getTime()),
-  }));
+      .sort((a, b) => new Date(a.loggedAt).getTime() - new Date(b.loggedAt).getTime());
+    // Canonical glucoseResponse lives on Meal — fall back to primary meal's response
+    // if the session itself doesn't have one (normal case for all current data).
+    const glucoseResponse =
+      session.glucoseResponse ??
+      meals.find(m => m.glucoseResponse && !m.glucoseResponse.isPartial)?.glucoseResponse ??
+      meals.find(m => m.glucoseResponse)?.glucoseResponse ??
+      null;
+    return { ...session, glucoseResponse, meals };
+  });
 
   // Legacy meals that pre-date the session system
   const legacy: SessionWithMeals[] = meals

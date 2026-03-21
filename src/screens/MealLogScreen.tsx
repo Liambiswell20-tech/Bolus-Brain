@@ -17,14 +17,12 @@ import {
 } from 'react-native';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { fetchAndStoreCurve, loadSessionsWithMeals, saveMeal } from '../services/storage';
-import type { SessionWithMeals } from '../services/storage';
 import { fetchGlucoseRange, fetchLatestGlucose } from '../services/nightscout';
 import {
   estimateCarbsFromPhoto,
   getRemainingEstimates,
   RateLimitError,
 } from '../services/carbEstimate';
-import { findSimilarSessions } from '../services/matching';
 import type { SessionMatch } from '../services/matching';
 import { classifyOutcome } from '../utils/outcomeClassifier';
 import { glucoseColor } from '../utils/glucoseColor';
@@ -94,26 +92,17 @@ export default function MealLogScreen() {
     const timer = setTimeout(async () => {
       try {
         const allSessions = await loadSessionsWithMeals();
-        const syntheticSession: SessionWithMeals = {
-          id: '__live_search__',
-          mealIds: [],
-          startedAt: new Date().toISOString(),
-          confidence: 'high',
-          glucoseResponse: null,
-          meals: [{
-            id: '__live_search_meal__',
-            name: mealName.trim(),
-            photoUri: null,
-            insulinUnits: 0,
-            startGlucose: null,
-            carbsEstimated: null,
-            loggedAt: new Date().toISOString(),
-            sessionId: '__live_search__',
-            glucoseResponse: null,
-          }],
-        };
-        const summary = findSimilarSessions(syntheticSession, allSessions);
-        setLiveMatches(summary?.matches ?? []);
+        const query = mealName.trim().toLowerCase();
+        const matched = allSessions
+          .filter(s =>
+            s.glucoseResponse !== null &&
+            !s.glucoseResponse.isPartial &&
+            s.meals.some(m => m.name.toLowerCase().includes(query))
+          )
+          .sort((a, b) => new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime())
+          .slice(0, 5)
+          .map(s => ({ session: s, score: 1 as number }));
+        setLiveMatches(matched);
       } catch {
         // Silent failure — hide list, do not show error (per 03-UI-SPEC.md error state)
         setLiveMatches([]);
