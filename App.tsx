@@ -1,6 +1,7 @@
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { StatusBar } from 'expo-status-bar';
+import React, { useEffect } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import HomeScreen from './src/screens/HomeScreen';
 import MealLogScreen from './src/screens/MealLogScreen';
@@ -12,6 +13,7 @@ import SettingsScreen from './src/screens/SettingsScreen';
 import AccountScreen from './src/screens/AccountScreen';
 import HelpScreen from './src/screens/HelpScreen';
 import type { InsulinLogType } from './src/services/storage';
+import { migrateLegacySessions } from './src/services/storage';
 
 export type RootStackParamList = {
   Home: undefined;
@@ -28,6 +30,12 @@ export type RootStackParamList = {
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export default function App() {
+  useEffect(() => {
+    migrateLegacySessions().catch(err =>
+      console.warn('[App] migration error:', err)
+    );
+  }, []);
+
   return (
     <SafeAreaProvider>
       <NavigationContainer>

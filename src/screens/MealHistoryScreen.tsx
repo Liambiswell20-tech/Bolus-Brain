@@ -1,12 +1,10 @@
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../App';
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  Animated,
   FlatList,
-  Image,
   LayoutAnimation,
   Platform,
   Pressable,
@@ -16,22 +14,23 @@ import {
   View,
 } from 'react-native';
 import {
-  fetchAndStoreCurveForMeal,
   fetchAndStoreBasalCurve,
-  GlucoseResponse,
   BasalCurve,
   InsulinLog,
   Meal,
-  loadMeals,
+  SessionWithMeals,
+  loadSessionsWithMeals,
   loadInsulinLogs,
 } from '../services/storage';
+import { ExpandableCard } from '../components/ExpandableCard';
+import { DayGroupHeader } from '../components/DayGroupHeader';
+import { SessionSubHeader } from '../components/SessionSubHeader';
 
 // Enable LayoutAnimation on Android
 if (Platform.OS === 'android') {
   UIManager.setLayoutAnimationEnabledExperimental?.(true);
 }
 
-const THREE_HOURS_MS = 3 * 60 * 60 * 1000;
 const TWELVE_HOURS_MS = 12 * 60 * 60 * 1000;
 
 // --- date helpers ---
@@ -67,15 +66,6 @@ function formatDate(iso: string): string {
   });
 }
 
-function mealWindowComplete(loggedAt: string): boolean {
-  return Date.now() - new Date(loggedAt).getTime() >= THREE_HOURS_MS;
-}
-
-function minsUntilReady(loggedAt: string): number {
-  const elapsed = Date.now() - new Date(loggedAt).getTime();
-  return Math.ceil((THREE_HOURS_MS - elapsed) / 60000);
-}
-
 function basalWindowComplete(loggedAt: string): boolean {
   return Date.now() - new Date(loggedAt).getTime() >= TWELVE_HOURS_MS;
 }
@@ -83,12 +73,6 @@ function basalWindowComplete(loggedAt: string): boolean {
 function minsUntilBasalReady(loggedAt: string): number {
   const elapsed = Date.now() - new Date(loggedAt).getTime();
   return Math.ceil((TWELVE_HOURS_MS - elapsed) / 60000);
-}
-
-function glucoseColor(mmol: number): string {
-  if (mmol < 3.9) return '#FF3B30';
-  if (mmol > 10.0) return '#FF9500';
-  return '#30D158';
 }
 
 // --- shared stat component ---
@@ -115,134 +99,6 @@ function Stat({
       <Text style={styles.statUnit}>{unit}</Text>
       {delta !== undefined && (
         <Text style={[styles.statDelta, { color: deltaColor ?? '#8E8E93' }]}>{delta}</Text>
-      )}
-    </View>
-  );
-}
-
-// --- glucose response card ---
-
-function GlucoseResponseCard({ response }: { response: GlucoseResponse }) {
-  const endLabel = response.isPartial ? 'Now' : '3hr';
-  const endGlucose = response.endGlucose ?? 0;
-  const startGlucose = response.startGlucose ?? 0;
-  const net = endGlucose - startGlucose;
-  const netStr = `${net >= 0 ? '▲ +' : '▼ '}${net.toFixed(1)}`;
-  const endRangeColor = glucoseColor(endGlucose);
-
-  return (
-    <View style={styles.responseCard}>
-      <View style={styles.responseRow}>
-        <Stat label="Start" value={startGlucose.toFixed(1)} unit="mmol/L" />
-        <Stat
-          label="Peak"
-          value={(response.peakGlucose ?? 0).toFixed(1)}
-          unit="mmol/L"
-          color={(response.peakGlucose ?? 0) > 10 ? '#FF9500' : '#30D158'}
-        />
-        <Stat
-          label={endLabel}
-          value={endGlucose.toFixed(1)}
-          unit="mmol/L"
-          color={endRangeColor}
-          delta={netStr}
-          deltaColor={endRangeColor}
-        />
-      </View>
-      {response.isPartial && (
-        <Text style={styles.partialNote}>Curve still building</Text>
-      )}
-    </View>
-  );
-}
-
-// --- meal card ---
-
-function MealCard({ meal, onRefresh }: { meal: Meal; onRefresh: () => void }) {
-  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const [fetching, setFetching] = useState(false);
-  const complete = mealWindowComplete(meal.loggedAt);
-  const minsLeft = minsUntilReady(meal.loggedAt);
-
-  async function handleFetchCurve() {
-    setFetching(true);
-    try {
-      await fetchAndStoreCurveForMeal(meal.id);
-      onRefresh();
-    } finally {
-      setFetching(false);
-    }
-  }
-
-  return (
-    <View style={styles.card}>
-      <View style={styles.cardEditRow}>
-        <View style={{ flex: 1 }} />
-        <Pressable
-          style={styles.editBtn}
-          onPress={() => navigation.navigate('EditMeal', { mealId: meal.id })}
-          hitSlop={8}
-        >
-          <Text style={styles.editBtnText}>Edit</Text>
-        </Pressable>
-      </View>
-      <View style={styles.mealHeader}>
-        {meal.photoUri ? (
-          <Image source={{ uri: meal.photoUri }} style={styles.thumbnail} />
-        ) : (
-          <View style={[styles.thumbnail, styles.noPhoto]}>
-            <Text style={styles.noPhotoIcon}>🍽</Text>
-          </View>
-        )}
-        <View style={styles.mealMeta}>
-          <View style={styles.mealTitleRow}>
-            <Text style={styles.mealName} numberOfLines={1}>{meal.name}</Text>
-            {meal.insulinUnits > 0 && (
-              <View style={styles.insulinBadge}>
-                <Text style={styles.insulinBadgeText}>{meal.insulinUnits}u</Text>
-              </View>
-            )}
-          </View>
-          <Text style={styles.mealDate}>{formatDate(meal.loggedAt)}</Text>
-          {meal.carbsEstimated != null && (
-            <Text style={styles.carbEstimate}>~{meal.carbsEstimated}g carbs (AI estimate)</Text>
-          )}
-          {meal.startGlucose !== null && (
-            <View style={styles.startGlucoseRow}>
-              <Text style={[styles.startGlucoseValue, { color: glucoseColor(meal.startGlucose) }]}>
-                {meal.startGlucose.toFixed(1)}
-              </Text>
-              <Text style={styles.startGlucoseUnit}> mmol/L before</Text>
-            </View>
-          )}
-        </View>
-      </View>
-
-      {meal.glucoseResponse ? (
-        <>
-          <GlucoseResponseCard response={meal.glucoseResponse} />
-          {meal.glucoseResponse.isPartial && complete && (
-            <Pressable style={styles.refreshBtn} onPress={handleFetchCurve} disabled={fetching}>
-              {fetching
-                ? <ActivityIndicator size="small" color="#0A84FF" />
-                : <Text style={styles.refreshBtnText}>Refresh curve</Text>
-              }
-            </Pressable>
-          )}
-        </>
-      ) : complete ? (
-        <Pressable style={styles.fetchBtn} onPress={handleFetchCurve} disabled={fetching}>
-          {fetching
-            ? <ActivityIndicator size="small" color="#000" />
-            : <Text style={styles.fetchBtnText}>Load glucose curve</Text>
-          }
-        </Pressable>
-      ) : (
-        <View style={styles.pendingRow}>
-          <Text style={styles.pendingText}>
-            Curve ready in ~{minsLeft} min{minsLeft !== 1 ? 's' : ''}
-          </Text>
-        </View>
       )}
     </View>
   );
@@ -371,77 +227,40 @@ function InsulinLogCard({ log, onRefresh }: { log: InsulinLog; onRefresh: () => 
   );
 }
 
-// --- day header ---
-
-function DayHeader({
-  label,
-  count,
-  expanded,
-  onToggle,
-}: {
-  label: string;
-  count: number;
-  expanded: boolean;
-  onToggle: () => void;
-}) {
-  const rotation = useRef(new Animated.Value(expanded ? 1 : 0)).current;
-
-  useEffect(() => {
-    Animated.timing(rotation, {
-      toValue: expanded ? 1 : 0,
-      duration: 220,
-      useNativeDriver: true,
-    }).start();
-  }, [expanded, rotation]);
-
-  const chevronStyle = {
-    transform: [{
-      rotate: rotation.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '90deg'] }),
-    }],
-  };
-
-  return (
-    <Pressable style={styles.dayHeader} onPress={onToggle}>
-      <Text style={styles.dayHeaderLabel}>{label}</Text>
-      <Text style={styles.dayHeaderCount}>{count} {count === 1 ? 'entry' : 'entries'}</Text>
-      <Animated.Text style={[styles.dayHeaderChevron, chevronStyle]}>›</Animated.Text>
-    </Pressable>
-  );
-}
-
 // --- screen ---
 
-type HistoryItem =
-  | { kind: 'meal'; data: Meal }
-  | { kind: 'insulin'; data: InsulinLog };
-
 type ListRow =
-  | { type: 'today'; item: HistoryItem }
-  | { type: 'day-header'; dateKey: string; label: string; count: number; expanded: boolean }
-  | { type: 'day-item'; dateKey: string; item: HistoryItem };
+  | { type: 'today-meal';      meal: Meal; sessionId: string }
+  | { type: 'today-session';   session: SessionWithMeals }
+  | { type: 'today-insulin';   data: InsulinLog }
+  | { type: 'day-header';      dateKey: string; label: string; count: number; expanded: boolean }
+  | { type: 'session-subhdr';  session: SessionWithMeals; dateKey: string }
+  | { type: 'past-meal';       meal: Meal; dateKey: string }
+  | { type: 'past-insulin';    data: InsulinLog; dateKey: string };
 
 export default function MealHistoryScreen() {
-  const [items, setItems] = useState<HistoryItem[]>([]);
+  const [sessions, setSessions] = useState<SessionWithMeals[]>([]);
+  const [insulinLogs, setInsulinLogs] = useState<InsulinLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedDays, setExpandedDays] = useState<Set<string>>(new Set());
   const hasInitialized = useRef(false);
 
   const mergeItems = useCallback(async (showSpinner: boolean) => {
     if (showSpinner) setLoading(true);
-    const [meals, insulinLogs] = await Promise.all([loadMeals(), loadInsulinLogs()]);
-
-    const merged: HistoryItem[] = [
-      ...meals.map(m => ({ kind: 'meal' as const, data: m })),
-      ...insulinLogs.map(l => ({ kind: 'insulin' as const, data: l })),
-    ].sort((a, b) =>
-      new Date(b.data.loggedAt).getTime() - new Date(a.data.loggedAt).getTime()
-    );
+    const [loadedSessions, loadedInsulin] = await Promise.all([
+      loadSessionsWithMeals(),
+      loadInsulinLogs(),
+    ]);
 
     // On first load, open the most recent past day
-    if (!hasInitialized.current && merged.length > 0) {
+    if (!hasInitialized.current && (loadedSessions.length > 0 || loadedInsulin.length > 0)) {
       hasInitialized.current = true;
       const today = todayKey();
-      const pastKeys = [...new Set(merged.map(i => localDateKey(i.data.loggedAt)))]
+      const allDates = [
+        ...loadedSessions.map(s => localDateKey(s.startedAt)),
+        ...loadedInsulin.map(l => localDateKey(l.loggedAt)),
+      ];
+      const pastKeys = [...new Set(allDates)]
         .filter(k => k !== today)
         .sort((a, b) => b.localeCompare(a));
       if (pastKeys.length > 0) {
@@ -449,7 +268,8 @@ export default function MealHistoryScreen() {
       }
     }
 
-    setItems(merged);
+    setSessions(loadedSessions);
+    setInsulinLogs(loadedInsulin);
     if (showSpinner) setLoading(false);
   }, []);
 
@@ -473,42 +293,105 @@ export default function MealHistoryScreen() {
 
   const listData = useMemo<ListRow[]>(() => {
     const today = todayKey();
-    const dayMap = new Map<string, HistoryItem[]>();
 
-    for (const item of items) {
-      const key = localDateKey(item.data.loggedAt);
-      if (!dayMap.has(key)) dayMap.set(key, []);
-      dayMap.get(key)!.push(item);
+    // Build day buckets for sessions
+    const sessionsByDay = new Map<string, SessionWithMeals[]>();
+    for (const session of sessions) {
+      const key = localDateKey(session.startedAt);
+      if (!sessionsByDay.has(key)) sessionsByDay.set(key, []);
+      sessionsByDay.get(key)!.push(session);
     }
 
-    const sortedKeys = [...dayMap.keys()].sort((a, b) => b.localeCompare(a));
+    // Build day buckets for insulin logs
+    const insulinByDay = new Map<string, InsulinLog[]>();
+    for (const log of insulinLogs) {
+      const key = localDateKey(log.loggedAt);
+      if (!insulinByDay.has(key)) insulinByDay.set(key, []);
+      insulinByDay.get(key)!.push(log);
+    }
+
+    // All unique day keys
+    const allDayKeys = [...new Set([
+      ...sessionsByDay.keys(),
+      ...insulinByDay.keys(),
+    ])].sort((a, b) => b.localeCompare(a));
+
     const rows: ListRow[] = [];
 
     // Today's items — flat, no header
-    for (const item of (dayMap.get(today) ?? [])) {
-      rows.push({ type: 'today', item });
+    const todaySessions = sessionsByDay.get(today) ?? [];
+    const todayInsulin = insulinByDay.get(today) ?? [];
+
+    // Interleave today's sessions (meals) and insulin by time, newest-first
+    type TodayEntry =
+      | { kind: 'session'; session: SessionWithMeals; time: number }
+      | { kind: 'insulin'; log: InsulinLog; time: number };
+
+    const todayEntries: TodayEntry[] = [
+      ...todaySessions.map(s => ({ kind: 'session' as const, session: s, time: new Date(s.startedAt).getTime() })),
+      ...todayInsulin.map(l => ({ kind: 'insulin' as const, log: l, time: new Date(l.loggedAt).getTime() })),
+    ].sort((a, b) => b.time - a.time);
+
+    for (const entry of todayEntries) {
+      if (entry.kind === 'session') {
+        const s = entry.session;
+        if (s.meals.length >= 2) {
+          rows.push({ type: 'today-session', session: s });
+        }
+        for (const meal of s.meals) {
+          rows.push({ type: 'today-meal', meal, sessionId: s.id });
+        }
+      } else {
+        rows.push({ type: 'today-insulin', data: entry.log });
+      }
     }
 
     // Past days — collapsible
-    for (const key of sortedKeys.filter(k => k !== today)) {
-      const dayItems = dayMap.get(key)!;
+    for (const key of allDayKeys.filter(k => k !== today)) {
+      const daySessions = sessionsByDay.get(key) ?? [];
+      const dayInsulin = insulinByDay.get(key) ?? [];
+      const count = daySessions.reduce((acc, s) => acc + s.meals.length, 0) + dayInsulin.length;
       const expanded = expandedDays.has(key);
+
       rows.push({
         type: 'day-header',
         dateKey: key,
         label: formatDayLabel(key),
-        count: dayItems.length,
+        count,
         expanded,
       });
+
       if (expanded) {
-        for (const item of dayItems) {
-          rows.push({ type: 'day-item', dateKey: key, item });
+        // Interleave sessions and insulin by time, newest-first
+        type PastEntry =
+          | { kind: 'session'; session: SessionWithMeals; time: number }
+          | { kind: 'insulin'; log: InsulinLog; time: number };
+
+        const pastEntries: PastEntry[] = [
+          ...daySessions.map(s => ({ kind: 'session' as const, session: s, time: new Date(s.startedAt).getTime() })),
+          ...dayInsulin.map(l => ({ kind: 'insulin' as const, log: l, time: new Date(l.loggedAt).getTime() })),
+        ].sort((a, b) => b.time - a.time);
+
+        for (const entry of pastEntries) {
+          if (entry.kind === 'session') {
+            const s = entry.session;
+            if (s.meals.length >= 2) {
+              rows.push({ type: 'session-subhdr', session: s, dateKey: key });
+            }
+            for (const meal of s.meals) {
+              rows.push({ type: 'past-meal', meal, dateKey: key });
+            }
+          } else {
+            rows.push({ type: 'past-insulin', data: entry.log, dateKey: key });
+          }
         }
       }
     }
 
     return rows;
-  }, [items, expandedDays]);
+  }, [sessions, insulinLogs, expandedDays]);
+
+  const isEmpty = sessions.length === 0 && insulinLogs.length === 0;
 
   if (loading) {
     return (
@@ -518,7 +401,7 @@ export default function MealHistoryScreen() {
     );
   }
 
-  if (items.length === 0) {
+  if (isEmpty) {
     return (
       <View style={styles.center}>
         <Text style={styles.emptyIcon}>🍽</Text>
@@ -532,15 +415,19 @@ export default function MealHistoryScreen() {
     <FlatList
       data={listData}
       keyExtractor={row => {
-        if (row.type === 'today') return `today_${row.item.kind}_${row.item.data.id}`;
         if (row.type === 'day-header') return `header_${row.dateKey}`;
-        return `day_${row.dateKey}_${row.item.kind}_${row.item.data.id}`;
+        if (row.type === 'today-meal') return `today_meal_${row.meal.id}`;
+        if (row.type === 'today-session') return `today_session_${row.session.id}`;
+        if (row.type === 'today-insulin') return `today_insulin_${row.data.id}`;
+        if (row.type === 'session-subhdr') return `subhdr_${row.dateKey}_${row.session.id}`;
+        if (row.type === 'past-meal') return `past_meal_${row.dateKey}_${row.meal.id}`;
+        return `past_insulin_${row.dateKey}_${row.data.id}`;
       }}
       contentContainerStyle={styles.list}
       renderItem={({ item: row }) => {
         if (row.type === 'day-header') {
           return (
-            <DayHeader
+            <DayGroupHeader
               label={row.label}
               count={row.count}
               expanded={row.expanded}
@@ -548,10 +435,33 @@ export default function MealHistoryScreen() {
             />
           );
         }
-        const item = row.item;
-        return item.kind === 'meal'
-          ? <MealCard meal={item.data} onRefresh={silentRefresh} />
-          : <InsulinLogCard log={item.data} onRefresh={silentRefresh} />;
+        if (row.type === 'session-subhdr') {
+          return (
+            <SessionSubHeader
+              mealCount={row.session.meals.length}
+              startedAt={row.session.startedAt}
+            />
+          );
+        }
+        if (row.type === 'today-session') {
+          return (
+            <SessionSubHeader
+              mealCount={row.session.meals.length}
+              startedAt={row.session.startedAt}
+            />
+          );
+        }
+        if (row.type === 'today-meal' || row.type === 'past-meal') {
+          return (
+            <ExpandableCard
+              meal={row.meal}
+              onRefresh={silentRefresh}
+              matchingSlot={{ matchData: null }}
+            />
+          );
+        }
+        // today-insulin or past-insulin
+        return <InsulinLogCard log={row.data} onRefresh={silentRefresh} />;
       }}
     />
   );
@@ -577,38 +487,7 @@ const styles = StyleSheet.create({
     gap: 12,
   },
 
-  // Day header
-  dayHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#1A1A1A',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    marginTop: 4,
-  },
-  dayHeaderLabel: {
-    flex: 1,
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#FFFFFF',
-  },
-  dayHeaderCount: {
-    fontSize: 13,
-    color: '#636366',
-    marginRight: 10,
-  },
-  dayHeaderChevron: {
-    fontSize: 20,
-    color: '#636366',
-    lineHeight: 22,
-  },
-
   // Edit button (shared between meal + insulin cards)
-  cardEditRow: {
-    flexDirection: 'row',
-    marginBottom: -4,
-  },
   editBtn: {
     paddingHorizontal: 4,
     paddingVertical: 2,
@@ -617,43 +496,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#636366',
   },
-
-  // Meal card header
-  mealHeader: {
-    flexDirection: 'row',
-    gap: 12,
-    alignItems: 'center',
-  },
-  thumbnail: {
-    width: 60,
-    height: 60,
-    borderRadius: 10,
-  },
-  noPhoto: {
-    backgroundColor: '#2C2C2E',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  noPhotoIcon: { fontSize: 24 },
-  mealMeta: { flex: 1, gap: 3 },
-  mealTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  mealName: { fontSize: 16, fontWeight: '600', color: '#FFFFFF', flex: 1 },
-  insulinBadge: {
-    backgroundColor: '#0A1A3A',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 12,
-  },
-  insulinBadgeText: { fontSize: 12, fontWeight: '600', color: '#0A84FF' },
-  mealDate: { fontSize: 12, color: '#636366' },
-  carbEstimate: { fontSize: 12, color: '#636366' },
-  startGlucoseRow: { flexDirection: 'row', alignItems: 'baseline', marginTop: 1 },
-  startGlucoseValue: { fontSize: 15, fontWeight: '700' },
-  startGlucoseUnit: { fontSize: 12, color: '#8E8E93' },
 
   // Glucose stats
   responseCard: {
