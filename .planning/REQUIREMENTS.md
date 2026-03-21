@@ -21,9 +21,9 @@
 
 ### History UX
 
-- [ ] **HIST-01**: User can tap any history card to expand it and see full glucose stats, trend graph, and session context
-- [ ] **HIST-02**: History screen groups entries into day folders (e.g. "Wednesday 18 Mar") that are collapsed by default and expand on tap
-- [ ] **HIST-03**: Every meal history card displays an outcome badge with 4 states based on completed `GlucoseResponse`:
+- [x] **HIST-01**: User can tap any history card to expand it and see full glucose stats, trend graph, and session context
+- [x] **HIST-02**: History screen groups entries into day folders (e.g. "Wednesday 18 Mar") that are collapsed by default and expand on tap
+- [x] **HIST-03**: Every meal history card displays an outcome badge with 4 states based on completed `GlucoseResponse`:
   - **Green**: `peakGlucose ≤ 10.0` AND `endGlucose` 3.9–10.0 (stayed in range)
   - **Orange**: `peakGlucose > 10.0` AND `endGlucose` 3.9–10.0 (went high, returned to range)
   - **Dark Amber**: `endGlucose > 10.0` AND `endGlucose < 14.0` (stayed elevated but not extreme)
@@ -95,9 +95,9 @@
 | DEBT-06 | Phase 1 | Complete |
 | DEBT-07 | Phase 1 | Complete |
 | TEST-01 | Phase 1 | Complete |
-| HIST-01 | Phase 2 | Pending |
-| HIST-02 | Phase 2 | Pending |
-| HIST-03 | Phase 2 | Pending |
+| HIST-01 | Phase 2 | Complete |
+| HIST-02 | Phase 2 | Complete |
+| HIST-03 | Phase 2 | Complete |
 | HIST-05 | Phase 2 | Pending |
 | HIST-06 | Phase 2 | Pending |
 | PATT-01 | Phase 3 | Pending |
