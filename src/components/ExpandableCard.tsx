@@ -15,6 +15,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../App';
 import { fetchAndStoreCurveForMeal } from '../services/storage';
 import { classifyOutcome } from '../utils/outcomeClassifier';
+import { glucoseColor } from '../utils/glucoseColor';
 import { GlucoseChart } from './GlucoseChart';
 import { OutcomeBadge } from './OutcomeBadge';
 import type { ExpandableCardProps } from './types';
@@ -25,12 +26,6 @@ if (Platform.OS === 'android') {
 }
 
 const THREE_HOURS_MS = 3 * 60 * 60 * 1000;
-
-function glucoseColor(mmol: number): string {
-  if (mmol < 3.9) return '#FF3B30';
-  if (mmol > 10.0) return '#FF9500';
-  return '#30D158';
-}
 
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString('en-GB', {
