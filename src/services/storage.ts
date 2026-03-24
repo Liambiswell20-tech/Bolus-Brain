@@ -337,16 +337,24 @@ export async function saveMeal(
     sessionId: null,
   };
 
-  // Sessions that started within the last 3 hours are still "open"
+  // Sessions that started within the last 3 hours are still "open".
+  // elapsed must be >= 0: backdated entries must not attach to sessions that
+  // started AFTER the backdated time (negative elapsed would otherwise pass <= check).
   const activeSessions = new Set(
     sessions
-      .filter(s => now.getTime() - new Date(s.startedAt).getTime() <= THREE_HOURS_MS)
+      .filter(s => {
+        const elapsed = now.getTime() - new Date(s.startedAt).getTime();
+        return elapsed >= 0 && elapsed <= THREE_HOURS_MS;
+      })
       .map(s => s.id)
   );
 
-  // Only consider meals that are recent AND belong to an open session (or no session yet)
+  // Only consider meals that are recent AND belong to an open session (or no session yet).
+  // elapsed >= 0 guard mirrors the activeSessions fix — a backdated `now` must not
+  // treat future meals as "recent".
   const recentMeals = meals.filter(m => {
-    const withinWindow = now.getTime() - new Date(m.loggedAt).getTime() <= THREE_HOURS_MS;
+    const elapsed = now.getTime() - new Date(m.loggedAt).getTime();
+    const withinWindow = elapsed >= 0 && elapsed <= THREE_HOURS_MS;
     const sessionOpen = m.sessionId === null || activeSessions.has(m.sessionId);
     return withinWindow && sessionOpen;
   });
