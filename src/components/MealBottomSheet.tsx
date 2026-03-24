@@ -128,7 +128,7 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     maxHeight: '92%',
-    minHeight: Dimensions.get('window').height * 0.5,
+    minHeight: Dimensions.get('window').height * 0.55,
     paddingBottom: 24,
   },
   handle: {
