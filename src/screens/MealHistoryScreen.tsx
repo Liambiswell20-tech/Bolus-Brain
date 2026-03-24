@@ -22,9 +22,11 @@ import {
   loadSessionsWithMeals,
   loadInsulinLogs,
 } from '../services/storage';
-import { ExpandableCard } from '../components/ExpandableCard';
+import { MealHistoryCard } from '../components/MealHistoryCard';
+import { MealBottomSheet } from '../components/MealBottomSheet';
 import { DayGroupHeader } from '../components/DayGroupHeader';
 import { SessionSubHeader } from '../components/SessionSubHeader';
+import { findSimilarSessions } from '../services/matching';
 
 // Enable LayoutAnimation on Android
 if (Platform.OS === 'android') {
@@ -243,6 +245,8 @@ export default function MealHistoryScreen() {
   const [insulinLogs, setInsulinLogs] = useState<InsulinLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedDays, setExpandedDays] = useState<Set<string>>(new Set());
+  const [sheetSessions, setSheetSessions] = useState<SessionWithMeals[]>([]);
+  const [sheetVisible, setSheetVisible] = useState(false);
   const hasInitialized = useRef(false);
 
   const mergeItems = useCallback(async (showSpinner: boolean) => {
@@ -289,6 +293,25 @@ export default function MealHistoryScreen() {
       }
       return next;
     });
+  }
+
+  function handleCardPress(meal: Meal) {
+    if (!meal.sessionId) {
+      // No session — cannot find similar sessions
+      return;
+    }
+    const targetSession = sessions.find(s => s.id === meal.sessionId) ?? null;
+    if (!targetSession) return;
+
+    const result = findSimilarSessions(targetSession, sessions);
+    if (!result || result.matches.length === 0) {
+      // Silent: per CONTEXT.md Decision 6 — no sheet if 0 past instances
+      return;
+    }
+
+    // Cap at 10, caller's responsibility per Decision 6
+    setSheetSessions(result.matches.slice(0, 10).map(m => m.session));
+    setSheetVisible(true);
   }
 
   const listData = useMemo<ListRow[]>(() => {
@@ -412,59 +435,64 @@ export default function MealHistoryScreen() {
   }
 
   return (
-    <FlatList
-      data={listData}
-      keyExtractor={row => {
-        if (row.type === 'day-header') return `header_${row.dateKey}`;
-        if (row.type === 'today-meal') return `today_meal_${row.meal.id}`;
-        if (row.type === 'today-session') return `today_session_${row.session.id}`;
-        if (row.type === 'today-insulin') return `today_insulin_${row.data.id}`;
-        if (row.type === 'session-subhdr') return `subhdr_${row.dateKey}_${row.session.id}`;
-        if (row.type === 'past-meal') return `past_meal_${row.dateKey}_${row.meal.id}`;
-        return `past_insulin_${row.dateKey}_${row.data.id}`;
-      }}
-      contentContainerStyle={styles.list}
-      renderItem={({ item: row }) => {
-        if (row.type === 'day-header') {
-          return (
-            <DayGroupHeader
-              label={row.label}
-              count={row.count}
-              expanded={row.expanded}
-              onToggle={() => toggleDay(row.dateKey)}
-            />
-          );
-        }
-        if (row.type === 'session-subhdr') {
-          return (
-            <SessionSubHeader
-              mealCount={row.session.meals.length}
-              startedAt={row.session.startedAt}
-            />
-          );
-        }
-        if (row.type === 'today-session') {
-          return (
-            <SessionSubHeader
-              mealCount={row.session.meals.length}
-              startedAt={row.session.startedAt}
-            />
-          );
-        }
-        if (row.type === 'today-meal' || row.type === 'past-meal') {
-          return (
-            <ExpandableCard
-              meal={row.meal}
-              onRefresh={silentRefresh}
-              matchingSlot={{ matchData: null }}
-              allSessions={sessions}
-            />
-          );
-        }
-        // today-insulin or past-insulin
-        return <InsulinLogCard log={row.data} onRefresh={silentRefresh} />;
-      }}
-    />
+    <>
+      <FlatList
+        data={listData}
+        keyExtractor={row => {
+          if (row.type === 'day-header') return `header_${row.dateKey}`;
+          if (row.type === 'today-meal') return `today_meal_${row.meal.id}`;
+          if (row.type === 'today-session') return `today_session_${row.session.id}`;
+          if (row.type === 'today-insulin') return `today_insulin_${row.data.id}`;
+          if (row.type === 'session-subhdr') return `subhdr_${row.dateKey}_${row.session.id}`;
+          if (row.type === 'past-meal') return `past_meal_${row.dateKey}_${row.meal.id}`;
+          return `past_insulin_${row.dateKey}_${row.data.id}`;
+        }}
+        contentContainerStyle={styles.list}
+        renderItem={({ item: row }) => {
+          if (row.type === 'day-header') {
+            return (
+              <DayGroupHeader
+                label={row.label}
+                count={row.count}
+                expanded={row.expanded}
+                onToggle={() => toggleDay(row.dateKey)}
+              />
+            );
+          }
+          if (row.type === 'session-subhdr') {
+            return (
+              <SessionSubHeader
+                mealCount={row.session.meals.length}
+                startedAt={row.session.startedAt}
+              />
+            );
+          }
+          if (row.type === 'today-session') {
+            return (
+              <SessionSubHeader
+                mealCount={row.session.meals.length}
+                startedAt={row.session.startedAt}
+              />
+            );
+          }
+          if (row.type === 'today-meal' || row.type === 'past-meal') {
+            return (
+              <MealHistoryCard
+                meal={row.meal}
+                onPress={() => handleCardPress(row.meal)}
+              />
+            );
+          }
+          // today-insulin or past-insulin
+          return <InsulinLogCard log={row.data} onRefresh={silentRefresh} />;
+        }}
+      />
+      <MealBottomSheet
+        sessions={sheetSessions}
+        visible={sheetVisible}
+        onClose={() => setSheetVisible(false)}
+      />
+    </>
   );
 }
 
