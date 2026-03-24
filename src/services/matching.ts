@@ -1,8 +1,9 @@
+import { getMealFingerprint } from '../utils/mealFingerprint';
 import { SessionWithMeals } from './storage';
 
 export interface SessionMatch {
   session: SessionWithMeals;
-  score: number; // 0–1 Jaccard similarity
+  score: number; // 0–1 insulin similarity score
 }
 
 export interface MatchSummary {
@@ -12,49 +13,18 @@ export interface MatchSummary {
   avgTimeToPeak: number; // average timeToPeakMins
 }
 
-const SIMILARITY_THRESHOLD = 0.25;
 const MAX_MATCHES = 5;
-
-// Weight given to meal-name similarity vs insulin similarity (must sum to 1)
-const MEAL_WEIGHT = 0.75;
-const INSULIN_WEIGHT = 0.25;
 
 // Insulin units within this tolerance are considered "similar"
 const INSULIN_TOLERANCE_UNITS = 2;
 
-// Stop-words that add no signal when comparing meal names
-const STOP_WORDS = new Set([
-  'and', 'with', 'a', 'the', 'of', 'on', 'in', 'at', 'some', 'bit', 'few',
-]);
-
-function tokenize(name: string): Set<string> {
-  return new Set(
-    name
-      .toLowerCase()
-      .split(/[\s,&+/]+/)
-      .map(w => w.replace(/[^a-z0-9]/g, ''))
-      .filter(w => w.length > 1 && !STOP_WORDS.has(w))
-  );
-}
-
-function sessionTokens(session: SessionWithMeals): Set<string> {
-  const all = new Set<string>();
-  for (const meal of session.meals) {
-    for (const tok of tokenize(meal.name)) {
-      all.add(tok);
-    }
-  }
-  return all;
-}
-
-function jaccard(a: Set<string>, b: Set<string>): number {
-  if (a.size === 0 && b.size === 0) return 0;
-  let intersection = 0;
-  for (const tok of a) {
-    if (b.has(tok)) intersection++;
-  }
-  const union = new Set([...a, ...b]).size;
-  return union === 0 ? 0 : intersection / union;
+/**
+ * Canonical fingerprint for an entire session (all meals combined).
+ * Multi-meal sessions: join all names, fingerprint the result.
+ * "Chicken pasta" + "salad" → getMealFingerprint("Chicken pasta salad")
+ */
+function sessionFingerprint(session: SessionWithMeals): string {
+  return getMealFingerprint(session.meals.map(m => m.name).join(' '));
 }
 
 function totalInsulin(session: SessionWithMeals): number {
@@ -83,16 +53,22 @@ function sameDay(isoA: string, isoB: string): boolean {
 }
 
 /**
- * Find past sessions that are similar to the target session.
+ * Find past sessions that are an exact fingerprint match for the target session.
+ *
+ * Matching rule: sessionFingerprint(candidate) === sessionFingerprint(target)
+ * This means stop-words are stripped and remaining content words are sorted,
+ * so "Beans on toast" matches "Toast with beans" but NOT "Cheese and crisp sandwich".
+ *
  * Only considers sessions with a completed glucoseResponse.
  * Excludes the target session itself and any session from the same day.
+ * Ranks matches by insulin similarity; caps at MAX_MATCHES.
  */
 export function findSimilarSessions(
   target: SessionWithMeals,
   allSessions: SessionWithMeals[]
 ): MatchSummary | null {
-  const targetTokens = sessionTokens(target);
-  if (targetTokens.size === 0) return null;
+  const targetFp = sessionFingerprint(target);
+  if (!targetFp) return null;
 
   const matches: SessionMatch[] = allSessions
     .filter(
@@ -100,16 +76,10 @@ export function findSimilarSessions(
         s.id !== target.id &&
         s.glucoseResponse !== null &&
         !s.glucoseResponse.isPartial &&
-        !sameDay(s.startedAt, target.startedAt)
+        !sameDay(s.startedAt, target.startedAt) &&
+        sessionFingerprint(s) === targetFp
     )
-    .map(s => {
-      const mealScore = jaccard(targetTokens, sessionTokens(s));
-      const insulinScore = insulinSimilarity(target, s);
-      const score = mealScore * MEAL_WEIGHT + insulinScore * INSULIN_WEIGHT;
-      return { session: s, score, mealScore };
-    })
-    .filter(m => m.mealScore > 0 && m.score >= SIMILARITY_THRESHOLD)
-    .map(({ session, score }) => ({ session, score }))
+    .map(s => ({ session: s, score: insulinSimilarity(target, s) }))
     .sort((a, b) => b.score - a.score)
     .slice(0, MAX_MATCHES);
 

@@ -1,4 +1,5 @@
 import { findSimilarSessions } from './matching';
+import { getMealFingerprint } from '../utils/mealFingerprint';
 import type { SessionWithMeals, Meal, GlucoseResponse } from './storage';
 
 // ---------------------------------------------------------------------------
@@ -55,76 +56,106 @@ function makeSession(
 }
 
 // ---------------------------------------------------------------------------
-// Tests
+// Fingerprint correctness tests
+// ---------------------------------------------------------------------------
+
+describe('getMealFingerprint', () => {
+  it('strips stop words and sorts — "Beans on toast" === "Toast with beans"', () => {
+    expect(getMealFingerprint('Beans on toast')).toBe(getMealFingerprint('Toast with beans'));
+  });
+
+  it('"Beans and toast" fingerprints the same as "Toast with beans"', () => {
+    expect(getMealFingerprint('Beans and toast')).toBe(getMealFingerprint('Toast with beans'));
+  });
+
+  it('"Chicken with rice" === "Rice and chicken"', () => {
+    expect(getMealFingerprint('Chicken with rice')).toBe(getMealFingerprint('Rice and chicken'));
+  });
+
+  it('"Lamb shank and mashed potato" !== "Cheese and crisp sandwich"', () => {
+    expect(getMealFingerprint('Lamb shank and mashed potato')).not.toBe(
+      getMealFingerprint('Cheese and crisp sandwich')
+    );
+  });
+
+  it('"Beans on toast" !== "Chicken on rice"', () => {
+    expect(getMealFingerprint('Beans on toast')).not.toBe(getMealFingerprint('Chicken on rice'));
+  });
+
+  it('returns empty string for a name composed entirely of stop words', () => {
+    expect(getMealFingerprint('and with the')).toBe('');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// findSimilarSessions tests
 // ---------------------------------------------------------------------------
 
 describe('findSimilarSessions', () => {
   beforeEach(() => {
-    // Reset counter for deterministic IDs per test group
     sessionCounter = 0;
   });
 
-  // Test 1: Returns null when target has no meals (empty token set)
+  // Test 1: Returns null when target has no meals (empty fingerprint)
   it('returns null when target has no meals', () => {
     const target = makeSession([], '2026-03-21T12:00:00Z');
     const session1 = makeSession([makeMeal('pasta bolognese')], '2026-03-19T12:00:00Z');
     const session2 = makeSession([makeMeal('pasta bolognese')], '2026-03-18T12:00:00Z');
-    const session3 = makeSession([makeMeal('pasta bolognese')], '2026-03-17T12:00:00Z');
 
-    const result = findSimilarSessions(target, [target, session1, session2, session3]);
+    const result = findSimilarSessions(target, [target, session1, session2]);
     expect(result).toBeNull();
   });
 
-  // Test 2: Returns null when 0 sessions meet similarity threshold
-  it('returns null when no sessions meet the similarity threshold', () => {
-    // target has 4 units insulin; sessions have wildly different insulin AND different meal tokens
-    // mealScore will be 0 (no token overlap); insulinScore will be 0 (diff >> 3x tolerance)
-    // combined score: 0 * 0.75 + 0 * 0.25 = 0 — below SIMILARITY_THRESHOLD (0.25)
-    const target = makeSession([makeMeal('fish and chips', 4)], '2026-03-21T12:00:00Z');
-    const session1 = makeSession([makeMeal('banana smoothie', 30)], '2026-03-19T12:00:00Z');
-    const session2 = makeSession([makeMeal('mango yoghurt', 28)], '2026-03-18T12:00:00Z');
+  // Test 2: Returns null when no fingerprint matches exist
+  it('returns null when no sessions have a matching fingerprint', () => {
+    const target = makeSession([makeMeal('fish chips', 4)], '2026-03-21T12:00:00Z');
+    const session1 = makeSession([makeMeal('banana smoothie', 4)], '2026-03-19T12:00:00Z');
+    const session2 = makeSession([makeMeal('mango yoghurt', 4)], '2026-03-18T12:00:00Z');
 
     const result = findSimilarSessions(target, [session1, session2]);
     expect(result).toBeNull();
   });
 
-  // Test 3: Returns MatchSummary with matches.length === 1 when exactly 1 session matches
-  it('returns MatchSummary with 1 match when only 1 session meets threshold', () => {
-    // Use same insulin units (4) so insulin similarity doesn't elevate non-matching sessions
+  // Test 3: Exact fingerprint match — "pasta bolognese" matches "bolognese pasta"
+  it('returns 1 match when exactly 1 session has a matching fingerprint', () => {
     const target = makeSession([makeMeal('pasta bolognese', 4)], '2026-03-21T12:00:00Z');
-    // 'pasta' shares a token with 'pasta bolognese' AND same insulin — should match
-    const matchingSession = makeSession([makeMeal('pasta', 4)], '2026-03-19T12:00:00Z');
-    // 'orange juice' shares no tokens AND very different insulin — combined score below 0.25
-    const nonMatchingSession = makeSession([makeMeal('orange juice', 30)], '2026-03-18T12:00:00Z');
+    // Same fingerprint: bolognese and pasta sorted = matching session
+    const matchingSession = makeSession([makeMeal('bolognese pasta', 4)], '2026-03-19T12:00:00Z');
+    // Different fingerprint: no match
+    const nonMatchingSession = makeSession([makeMeal('orange juice', 4)], '2026-03-18T12:00:00Z');
 
     const result = findSimilarSessions(target, [matchingSession, nonMatchingSession]);
     expect(result).not.toBeNull();
     expect(result!.matches.length).toBe(1);
+    expect(result!.matches[0].session.id).toBe(matchingSession.id);
   });
 
-  // Test 4: Returns MatchSummary when 2+ sessions match
-  it('returns MatchSummary when 2 or more sessions match', () => {
+  // Test 4: Exact fingerprint match returns 2+ sessions
+  it('returns MatchSummary when 2 or more sessions share the exact fingerprint', () => {
+    // "chicken pasta" → fingerprint: chicken_pasta
     const target = makeSession([makeMeal('chicken pasta')], '2026-03-21T12:00:00Z');
-    const session1 = makeSession([makeMeal('chicken pasta bake')], '2026-03-19T12:00:00Z');
-    const session2 = makeSession([makeMeal('pasta chicken')], '2026-03-18T12:00:00Z');
-    const session3 = makeSession([makeMeal('chicken pasta salad')], '2026-03-17T12:00:00Z');
+    // "pasta chicken" → chicken_pasta ✓
+    const session1 = makeSession([makeMeal('pasta chicken')], '2026-03-19T12:00:00Z');
+    // "chicken pasta" → chicken_pasta ✓
+    const session2 = makeSession([makeMeal('chicken pasta')], '2026-03-18T12:00:00Z');
+    // "chicken pasta bake" → bake_chicken_pasta ✗ — different fingerprint, must NOT match
+    const nonMatch = makeSession([makeMeal('chicken pasta bake')], '2026-03-17T12:00:00Z');
 
-    const result = findSimilarSessions(target, [session1, session2, session3]);
+    const result = findSimilarSessions(target, [session1, session2, nonMatch]);
     expect(result).not.toBeNull();
-    expect(result!.matches.length).toBeGreaterThanOrEqual(2);
+    expect(result!.matches.length).toBe(2);
+    expect(result!.matches.every(m => m.session.id !== nonMatch.id)).toBe(true);
   });
 
   // Test 5: Excludes target session itself from results
   it('excludes the target session itself from results', () => {
     const targetMeal = makeMeal('chicken pasta');
     const target = makeSession([targetMeal], '2026-03-21T12:00:00Z');
-    // Give target a glucoseResponse so it would otherwise pass the filter
     target.glucoseResponse = makeGlucoseResponse();
 
-    const session1 = makeSession([makeMeal('chicken pasta bake')], '2026-03-19T12:00:00Z');
-    const session2 = makeSession([makeMeal('pasta chicken salad')], '2026-03-18T12:00:00Z');
+    const session1 = makeSession([makeMeal('pasta chicken')], '2026-03-19T12:00:00Z');
+    const session2 = makeSession([makeMeal('chicken pasta')], '2026-03-18T12:00:00Z');
 
-    // Include target in allSessions — it must be excluded from its own results
     const result = findSimilarSessions(target, [target, session1, session2]);
     expect(result).not.toBeNull();
     expect(result!.matches.every(m => m.session.id !== target.id)).toBe(true);
@@ -133,14 +164,11 @@ describe('findSimilarSessions', () => {
   // Test 6: Excludes sessions from the same calendar day as target
   it('excludes sessions from the same calendar day as the target', () => {
     const target = makeSession([makeMeal('chicken pasta')], '2026-03-21T12:00:00Z');
-    // Same day — must be excluded
-    const sameDaySession = makeSession([makeMeal('chicken pasta bake')], '2026-03-21T08:00:00Z');
-    // Different day — should be included if it scores above threshold
-    const differentDaySession = makeSession([makeMeal('chicken pasta salad')], '2026-03-20T12:00:00Z');
+    const sameDaySession = makeSession([makeMeal('pasta chicken')], '2026-03-21T08:00:00Z');
+    const differentDaySession = makeSession([makeMeal('chicken pasta')], '2026-03-20T12:00:00Z');
 
     const result = findSimilarSessions(target, [sameDaySession, differentDaySession]);
     if (result !== null) {
-      // sameDaySession must not appear in results
       expect(result.matches.every(m => m.session.id !== sameDaySession.id)).toBe(true);
     }
   });
@@ -148,12 +176,10 @@ describe('findSimilarSessions', () => {
   // Test 7: Excludes sessions with null glucoseResponse
   it('excludes sessions with null glucoseResponse', () => {
     const target = makeSession([makeMeal('chicken pasta')], '2026-03-21T12:00:00Z');
-    // 2 matching sessions without glucoseResponse — must be excluded
-    const noResponse1 = makeSession([makeMeal('chicken pasta bake')], '2026-03-19T12:00:00Z', null);
-    const noResponse2 = makeSession([makeMeal('pasta chicken')], '2026-03-18T12:00:00Z', null);
-    // 1 matching session with complete glucoseResponse — should be included
+    const noResponse1 = makeSession([makeMeal('pasta chicken')], '2026-03-19T12:00:00Z', null);
+    const noResponse2 = makeSession([makeMeal('chicken pasta')], '2026-03-18T12:00:00Z', null);
     const withResponse = makeSession(
-      [makeMeal('chicken pasta salad')],
+      [makeMeal('pasta chicken')],
       '2026-03-17T12:00:00Z',
       makeGlucoseResponse()
     );
@@ -167,20 +193,18 @@ describe('findSimilarSessions', () => {
   // Test 8: Excludes sessions with partial (isPartial: true) glucoseResponse
   it('excludes sessions with isPartial glucoseResponse', () => {
     const target = makeSession([makeMeal('chicken pasta')], '2026-03-21T12:00:00Z');
-    // 2 matching sessions with isPartial: true — must be excluded
     const partial1 = makeSession(
-      [makeMeal('chicken pasta bake')],
+      [makeMeal('pasta chicken')],
       '2026-03-19T12:00:00Z',
       makeGlucoseResponse({ isPartial: true })
     );
     const partial2 = makeSession(
-      [makeMeal('pasta chicken')],
+      [makeMeal('chicken pasta')],
       '2026-03-18T12:00:00Z',
       makeGlucoseResponse({ isPartial: true })
     );
-    // 1 matching session with isPartial: false — should be included
     const complete = makeSession(
-      [makeMeal('chicken pasta salad')],
+      [makeMeal('pasta chicken')],
       '2026-03-17T12:00:00Z',
       makeGlucoseResponse({ isPartial: false })
     );
@@ -192,19 +216,19 @@ describe('findSimilarSessions', () => {
   });
 
   // Test 9: Caps results at MAX_MATCHES (5)
-  it('caps results at MAX_MATCHES (5) even when more sessions match', () => {
+  it('caps results at MAX_MATCHES (5) even when more sessions share the fingerprint', () => {
     const target = makeSession([makeMeal('pasta bolognese')], '2026-03-21T12:00:00Z');
 
-    // 8 strongly matching sessions from different days — all should score well above threshold
+    // 8 sessions all sharing the fingerprint "bolognese_pasta"
     const sessions = [
-      makeSession([makeMeal('pasta bolognese mince')], '2026-03-20T12:00:00Z'),
-      makeSession([makeMeal('bolognese pasta bake')], '2026-03-19T12:00:00Z'),
-      makeSession([makeMeal('pasta bolognese sauce')], '2026-03-18T12:00:00Z'),
-      makeSession([makeMeal('pasta bolognese fresh')], '2026-03-17T12:00:00Z'),
-      makeSession([makeMeal('bolognese pasta dish')], '2026-03-16T12:00:00Z'),
-      makeSession([makeMeal('pasta bolognese leftovers')], '2026-03-15T12:00:00Z'),
-      makeSession([makeMeal('bolognese pasta meal')], '2026-03-14T12:00:00Z'),
-      makeSession([makeMeal('pasta bolognese dinner')], '2026-03-13T12:00:00Z'),
+      makeSession([makeMeal('pasta bolognese')], '2026-03-20T12:00:00Z'),
+      makeSession([makeMeal('bolognese pasta')], '2026-03-19T12:00:00Z'),
+      makeSession([makeMeal('pasta bolognese')], '2026-03-18T12:00:00Z'),
+      makeSession([makeMeal('bolognese pasta')], '2026-03-17T12:00:00Z'),
+      makeSession([makeMeal('pasta bolognese')], '2026-03-16T12:00:00Z'),
+      makeSession([makeMeal('bolognese pasta')], '2026-03-15T12:00:00Z'),
+      makeSession([makeMeal('pasta bolognese')], '2026-03-14T12:00:00Z'),
+      makeSession([makeMeal('bolognese pasta')], '2026-03-13T12:00:00Z'),
     ];
 
     const result = findSimilarSessions(target, sessions);
@@ -214,10 +238,11 @@ describe('findSimilarSessions', () => {
 
   // Test 10: Computes avgPeak, avgRise, avgTimeToPeak correctly
   it('computes avgPeak, avgRise, avgTimeToPeak correctly across matching sessions', () => {
+    // "chicken pasta" and "pasta chicken" share fingerprint chicken_pasta
     const target = makeSession([makeMeal('chicken pasta')], '2026-03-21T12:00:00Z');
 
     const session1 = makeSession(
-      [makeMeal('chicken pasta bake')],
+      [makeMeal('pasta chicken')],
       '2026-03-19T12:00:00Z',
       makeGlucoseResponse({
         peakGlucose: 8.0,
@@ -226,7 +251,7 @@ describe('findSimilarSessions', () => {
       })
     );
     const session2 = makeSession(
-      [makeMeal('pasta chicken salad')],
+      [makeMeal('chicken pasta')],
       '2026-03-18T12:00:00Z',
       makeGlucoseResponse({
         peakGlucose: 10.0,
@@ -237,8 +262,6 @@ describe('findSimilarSessions', () => {
 
     const result = findSimilarSessions(target, [session1, session2]);
     expect(result).not.toBeNull();
-
-    // Both sessions must be present in matches for the averages to be meaningful
     expect(result!.matches.length).toBe(2);
 
     // avgPeak: (8.0 + 10.0) / 2 = 9.0
@@ -247,5 +270,25 @@ describe('findSimilarSessions', () => {
     expect(result!.avgRise).toBe(3.0);
     // avgTimeToPeak: (30 + 50) / 2 = 40
     expect(result!.avgTimeToPeak).toBe(40);
+  });
+
+  // Test 11: Partial name no longer matches (regression guard)
+  it('does NOT match sessions where one name is a substring of the other', () => {
+    // "pasta" vs "pasta bolognese" — different fingerprints, must NOT match
+    const target = makeSession([makeMeal('pasta')], '2026-03-21T12:00:00Z');
+    const session1 = makeSession([makeMeal('pasta bolognese')], '2026-03-19T12:00:00Z');
+
+    const result = findSimilarSessions(target, [session1]);
+    expect(result).toBeNull();
+  });
+
+  // Test 12: Stop-word-only difference is ignored
+  it('matches sessions that differ only in stop words — "beans on toast" === "toast with beans"', () => {
+    const target = makeSession([makeMeal('beans on toast')], '2026-03-21T12:00:00Z');
+    const past = makeSession([makeMeal('toast with beans')], '2026-03-19T12:00:00Z');
+
+    const result = findSimilarSessions(target, [past]);
+    expect(result).not.toBeNull();
+    expect(result!.matches.length).toBe(1);
   });
 });

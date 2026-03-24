@@ -111,8 +111,9 @@ describe('MatchingSlot: fewer than 2 matches → nothing rendered', () => {
 
   it('should render when matchSummary has 2+ matches', () => {
     const target = makeSession([makeMeal('chicken pasta', 4)], '2026-03-21T12:00:00Z');
-    const match1 = makeSession([makeMeal('chicken pasta bake', 4)], '2026-03-19T12:00:00Z');
-    const match2 = makeSession([makeMeal('pasta chicken salad', 4)], '2026-03-18T12:00:00Z');
+    // Both share fingerprint chicken_pasta — exact matches
+    const match1 = makeSession([makeMeal('pasta chicken', 4)], '2026-03-19T12:00:00Z');
+    const match2 = makeSession([makeMeal('chicken pasta', 4)], '2026-03-18T12:00:00Z');
 
     const result = findSimilarSessions(target, [match1, match2]);
     expect(result).not.toBeNull();
@@ -197,8 +198,9 @@ describe('MatchingSlot: confidence warnings', () => {
   it('per-row confidence warning appears when match.session.confidence !== "high"', () => {
     // Component: const rowConfidenceLow = match.session.confidence !== 'high'
     const target = makeSession([makeMeal('chicken pasta', 4)], '2026-03-21T12:00:00Z');
-    const match1 = makeSession([makeMeal('chicken pasta bake', 4)], '2026-03-19T12:00:00Z', makeGlucoseResponse(), 'low');
-    const match2 = makeSession([makeMeal('pasta chicken salad', 4)], '2026-03-18T12:00:00Z', makeGlucoseResponse(), 'high');
+    // Both share fingerprint chicken_pasta — exact fingerprint matches
+    const match1 = makeSession([makeMeal('pasta chicken', 4)], '2026-03-19T12:00:00Z', makeGlucoseResponse(), 'low');
+    const match2 = makeSession([makeMeal('chicken pasta', 4)], '2026-03-18T12:00:00Z', makeGlucoseResponse(), 'high');
 
     const result = findSimilarSessions(target, [match1, match2]);
     expect(result).not.toBeNull();
@@ -223,8 +225,12 @@ describe('MatchingSlot: confidence warnings', () => {
 describe('MatchingSlot: up to 5 rows rendered', () => {
   it('renders at most 5 rows (findSimilarSessions caps at MAX_MATCHES=5)', () => {
     const target = makeSession([makeMeal('pasta bolognese', 4)], '2026-03-21T12:00:00Z');
+    // All share fingerprint bolognese_pasta — alternate between two equivalent names
     const manySessions = Array.from({ length: 8 }, (_, i) =>
-      makeSession([makeMeal('pasta bolognese dinner', 4)], `2026-03-${10 + i}T12:00:00Z`)
+      makeSession(
+        [makeMeal(i % 2 === 0 ? 'pasta bolognese' : 'bolognese pasta', 4)],
+        `2026-03-${10 + i}T12:00:00Z`
+      )
     );
 
     const result = findSimilarSessions(target, manySessions);

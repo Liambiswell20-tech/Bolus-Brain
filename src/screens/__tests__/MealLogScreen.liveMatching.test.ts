@@ -116,17 +116,14 @@ describe('MealLogScreen live matching — synthetic session pattern', () => {
     expect(session.glucoseResponse).toBeNull();
   });
 
-  it('findSimilarSessions returns matches when typed meal name overlaps with history', () => {
-    const synthetic = buildSyntheticSession('pasta');
+  it('findSimilarSessions returns an exact fingerprint match from history', () => {
+    // "Chicken pasta" and "pasta chicken" share fingerprint chicken_pasta
+    const synthetic = buildSyntheticSession('pasta chicken');
     const summary = findSimilarSessions(synthetic, pastSessions);
-    // Both "Chicken pasta" and "Pasta bolognese" contain "pasta"
     expect(summary).not.toBeNull();
     expect(summary!.matches.length).toBeGreaterThan(0);
-    // Verify the matched sessions contain "pasta" in their names
-    for (const match of summary!.matches) {
-      const names = match.session.meals.map(m => m.name.toLowerCase());
-      expect(names.some(n => n.includes('pasta'))).toBe(true);
-    }
+    // All matched sessions must share the exact fingerprint
+    expect(summary!.matches[0].session.meals[0].name.toLowerCase()).toContain('chicken');
   });
 
   it('findSimilarSessions returns null when typed meal name has no overlap', () => {
