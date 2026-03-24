@@ -303,13 +303,14 @@ export default function MealHistoryScreen() {
 
     if (!targetSession) return;
 
-    // Find all other sessions that contain a meal with the same fingerprint,
-    // sorted newest-first. No insulin filter, no same-day exclusion.
-    const targetFp = getMealFingerprint(meal.name);
+    // Match by session-level fingerprint (all meals combined) — same logic as matching.ts.
+    // Using a single meal's fingerprint caused cross-contamination: two sessions that both
+    // contained "Crisps" as a separate meal would show identical "eaten before" results.
+    const targetFp = getMealFingerprint(targetSession.meals.map(m => m.name).join(' '));
     const otherInstances = targetFp
       ? sessions
           .filter(s => s.id !== targetSession.id)
-          .filter(s => s.meals.some(m => getMealFingerprint(m.name) === targetFp))
+          .filter(s => getMealFingerprint(s.meals.map(m => m.name).join(' ')) === targetFp)
           .sort((a, b) => new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime())
           .slice(0, 9)
       : [];
