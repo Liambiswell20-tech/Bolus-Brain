@@ -43,9 +43,9 @@
 
 ### HomeScreen
 
-- [ ] **HOME-01**: User can tap the main mmol/L reading on HomeScreen to open a full-day glucose trend graph showing readings for the last 24 hours as a line chart
-- [ ] **HOME-02**: User can tap the estimated HbA1c value to see a modal stating: "Please be aware HbA1c is usually calculated over 90 days. You should get accurate testing and take guidance from your diabetes team."
-- [ ] **HOME-03**: Quick log buttons on HomeScreen are centred on screen
+- [x] **HOME-01**: User can tap the main mmol/L reading on HomeScreen to open a full-day glucose trend graph showing readings for the last 24 hours as a line chart
+- [x] **HOME-02**: User can tap the estimated HbA1c value to see a modal stating: "Please be aware HbA1c is usually calculated over 90 days. You should get accurate testing and take guidance from your diabetes team."
+- [x] **HOME-03**: Quick log buttons on HomeScreen are centred on screen
 
 ### Route to Market
 
@@ -102,9 +102,9 @@
 | HIST-06 | Phase 2 | Complete |
 | PATT-01 | Phase 3 | Complete |
 | PATT-02 | Phase 3 | Complete |
-| HOME-01 | Phase 4 | Pending |
-| HOME-02 | Phase 4 | Pending |
-| HOME-03 | Phase 4 | Pending |
+| HOME-01 | Phase 4 | Complete |
+| HOME-02 | Phase 4 | Complete |
+| HOME-03 | Phase 4 | Complete |
 | HIST-04 | Phase 4 | Pending |
 | PATT-03 | Phase 5 | Pending |
 | PATT-04 | Phase 5 | Pending |
