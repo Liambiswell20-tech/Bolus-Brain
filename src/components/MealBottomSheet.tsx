@@ -30,7 +30,7 @@ export function MealBottomSheet({ sessions, visible, onClose }: MealBottomSheetP
         {/* Content area — scrollable per session */}
         <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
           {activeSession && (
-            <SessionDetail session={activeSession} />
+            <SessionDetail key={activeSession.id} session={activeSession} />
           )}
         </ScrollView>
 
