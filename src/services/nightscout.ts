@@ -93,9 +93,15 @@ export async function fetchGlucoseRange(fromMs: number, toMs: number): Promise<C
   const entries: GlucoseEntry[] = await response.json();
   if (!entries || entries.length === 0) return [];
 
-  // Sort oldest-first so curves read left-to-right
+  // Sort oldest-first, deduplicate by timestamp, then map to mmol
+  const seen = new Set<number>();
   return entries
     .sort((a, b) => a.date - b.date)
+    .filter(e => {
+      if (seen.has(e.date)) return false;
+      seen.add(e.date);
+      return true;
+    })
     .map(e => ({
       mmol: Math.round((e.sgv / 18) * 10) / 10,
       date: e.date,
