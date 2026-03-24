@@ -1,3 +1,4 @@
+import levenshtein from 'fast-levenshtein';
 import { getMealFingerprint } from '../utils/mealFingerprint';
 import { SessionWithMeals } from './storage';
 
@@ -17,6 +18,9 @@ const MAX_MATCHES = 5;
 
 // Insulin units within this tolerance are considered "similar"
 const INSULIN_TOLERANCE_UNITS = 2;
+
+// Maximum Levenshtein distance between fingerprints to treat meals as the same
+const FUZZY_MAX_DISTANCE = 2;
 
 /**
  * Canonical fingerprint for an entire session (all meals combined).
@@ -53,11 +57,13 @@ function sameDay(isoA: string, isoB: string): boolean {
 }
 
 /**
- * Find past sessions that are an exact fingerprint match for the target session.
+ * Find past sessions that match the target session by fingerprint.
  *
- * Matching rule: sessionFingerprint(candidate) === sessionFingerprint(target)
- * This means stop-words are stripped and remaining content words are sorted,
- * so "Beans on toast" matches "Toast with beans" but NOT "Cheese and crisp sandwich".
+ * Primary: exact fingerprint equality (stop-words stripped, tokens sorted).
+ * Fallback: if no exact matches, sessions whose fingerprint is within
+ *           Levenshtein distance ≤ 2 of the target fingerprint are included.
+ *           This catches minor typos ("chiken" vs "chicken") without
+ *           reverting to the false-positive risk of partial/LIKE matching.
  *
  * Only considers sessions with a completed glucoseResponse.
  * Excludes the target session itself and any session from the same day.
@@ -70,15 +76,25 @@ export function findSimilarSessions(
   const targetFp = sessionFingerprint(target);
   if (!targetFp) return null;
 
-  const matches: SessionMatch[] = allSessions
-    .filter(
-      s =>
-        s.id !== target.id &&
-        s.glucoseResponse !== null &&
-        !s.glucoseResponse.isPartial &&
-        !sameDay(s.startedAt, target.startedAt) &&
-        sessionFingerprint(s) === targetFp
-    )
+  const candidates = allSessions.filter(
+    s =>
+      s.id !== target.id &&
+      s.glucoseResponse !== null &&
+      !s.glucoseResponse.isPartial &&
+      !sameDay(s.startedAt, target.startedAt)
+  );
+
+  // Primary: exact fingerprint match
+  let matched = candidates.filter(s => sessionFingerprint(s) === targetFp);
+
+  // Fallback: fuzzy match within Levenshtein distance ≤ 2
+  if (matched.length === 0) {
+    matched = candidates.filter(
+      s => levenshtein.get(sessionFingerprint(s), targetFp) <= FUZZY_MAX_DISTANCE
+    );
+  }
+
+  const matches: SessionMatch[] = matched
     .map(s => ({ session: s, score: insulinSimilarity(target, s) }))
     .sort((a, b) => b.score - a.score)
     .slice(0, MAX_MATCHES);
