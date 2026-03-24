@@ -9,7 +9,7 @@ Milestone 2 transforms BolusBrain from a data-collection app into an intelligent
 - [x] **Phase 1: Tech Debt and Foundation Fixes** - Eliminate data bugs and fragile error handling that would corrupt new features built on top of them (completed 2026-03-21)
 - [ ] **Phase 2: History Refactor and Core UX Components** - Migrate history screen to session model and build the reusable components all intelligence features depend on
 - [ ] **Phase 3: Intelligence Layer — Matching and Outcome Surfacing** - Wire the existing matching engine into history cards and meal log screen
-- [ ] **Phase 4: Session Grouping, Pattern Recall & HomeScreen Redesign** - Arc gauge HomeScreen, pattern recall bottom sheet, averaged stats, HbA1c disclaimer
+- [x] **Phase 4: Session Grouping, Pattern Recall & HomeScreen Redesign** - Arc gauge HomeScreen, pattern recall bottom sheet, averaged stats, HbA1c disclaimer (completed 2026-03-24)
 - [ ] **Phase 5: Data Model Extensions and Editing** - Add AI confidence tracking, long-acting overnight window, and dose editing
 - [ ] **Phase 6: Route to Market** - Complete landing page, email capture, and MHRA regulatory contact
 
@@ -91,7 +91,7 @@ Plans:
 - [x] 04-04-PLAN.md — Wave 2: Create MealHistoryCard (rename from ExpandableCard, tap-to-open-sheet) and MealBottomSheet
 - [x] 04-05-PLAN.md — Wave 3: Wire MealHistoryScreen to MealHistoryCard + MealBottomSheet; wire MealLogScreen to AveragedStatsPanel
 - [x] 04-06-PLAN.md — Wave 3: HomeScreen full redesign (arc gauge, HbA1c modal, centred buttons, animations) + App.tsx font loading
-- [ ] 04-07-PLAN.md — Wave 4: Unit tests for all new Phase 4 utilities and components
+- [x] 04-07-PLAN.md — Wave 4: Unit tests for all new Phase 4 utilities and components
 
 ### Phase 5: Data Model Extensions and Editing
 **Goal**: The app captures AI carb estimate confidence for future safety surfacing, tracks long-acting insulin effectiveness via an overnight glucose window, and stores both without requiring migration scripts
@@ -128,7 +128,7 @@ Phases 1 → 2 → 3 → 4 → 5 execute in numeric order.
 | 1. Tech Debt and Foundation Fixes | 4/4 | Complete   | 2026-03-21 |
 | 2. History Refactor and Core UX Components | 5/6 | In Progress|  |
 | 3. Intelligence Layer — Matching and Outcome Surfacing | 3/4 | In Progress|  |
-| 4. Session Grouping, Pattern Recall & HomeScreen Redesign | 6/7 | In Progress|  |
+| 4. Session Grouping, Pattern Recall & HomeScreen Redesign | 7/7 | Complete   | 2026-03-24 |
 | 5. Data Model Extensions and Editing | 0/TBD | Not started | - |
 | 6. Route to Market | 0/3 | Planned | - |
 
@@ -137,7 +137,7 @@ Phases 1 → 2 → 3 → 4 → 5 execute in numeric order.
 **Goal:** [To be planned]
 **Requirements**: TBD
 **Depends on:** Phase 6
-**Plans:** 6/7 plans executed
+**Plans:** 7/7 plans complete
 
 Plans:
 - [ ] TBD (run /gsd:plan-phase 7 to break down)
