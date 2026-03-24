@@ -1,7 +1,11 @@
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { useFonts, Outfit_400Regular, Outfit_600SemiBold } from '@expo-google-fonts/outfit';
+import { JetBrainsMono_400Regular } from '@expo-google-fonts/jetbrains-mono';
+import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect } from 'react';
+import { View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import HomeScreen from './src/screens/HomeScreen';
 import MealLogScreen from './src/screens/MealLogScreen';
@@ -29,12 +33,42 @@ export type RootStackParamList = {
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
+// Keep splash screen visible while fonts load
+SplashScreen.preventAutoHideAsync().catch(() => {});
+
 export default function App() {
+  const [fontsLoaded, fontError] = useFonts({
+    Outfit_400Regular,
+    Outfit_600SemiBold,
+    JetBrainsMono_400Regular,
+  });
+
   useEffect(() => {
     migrateLegacySessions().catch(err =>
       console.warn('[App] migration error:', err)
     );
   }, []);
+
+  // Release splash when fonts ready OR after error
+  useEffect(() => {
+    if (fontsLoaded || fontError) {
+      SplashScreen.hideAsync().catch(() => {});
+    }
+  }, [fontsLoaded, fontError]);
+
+  // 5-second timeout fallback: release splash regardless
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      SplashScreen.hideAsync().catch(() => {});
+    }, 5000);
+    return () => clearTimeout(timer);
+  }, []);
+
+  // Don't render navigation until fonts are ready (or errored/timed out)
+  // fontError: render anyway (fonts will fall back to system)
+  if (!fontsLoaded && !fontError) {
+    return <View style={{ flex: 1, backgroundColor: '#050706' }} />;
+  }
 
   return (
     <SafeAreaProvider>
@@ -42,10 +76,10 @@ export default function App() {
         <StatusBar style="light" />
         <Stack.Navigator
           screenOptions={{
-            headerStyle: { backgroundColor: '#000' },
+            headerStyle: { backgroundColor: '#050706' },
             headerTintColor: '#fff',
             headerTitleStyle: { fontWeight: '600' },
-            contentStyle: { backgroundColor: '#000' },
+            contentStyle: { backgroundColor: '#050706' },
           }}
         >
           <Stack.Screen name="Home" component={HomeScreen} options={{ headerShown: false }} />
