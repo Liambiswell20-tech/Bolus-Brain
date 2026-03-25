@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { File } from 'expo-file-system';
 
-const PROXY_URL = 'https://bolusbrain.app/api/carb-estimate';
+const PROXY_URL = 'https://www.bolusbrain.app/api/carb-estimate';
 
 const RATE_LIMIT_KEY = 'glucolog_carb_estimate_usage';
 const DAILY_LIMIT = 10;
