@@ -56,12 +56,12 @@
 ### B2B Data Capture Layer
 
 - [ ] **B2B-01**: Mandatory equipment onboarding gate — full-screen shown on first launch (and every fresh install / storage clear), hard gate before HomeScreen. Four mandatory pickers: rapid insulin brand, long-acting insulin brand (with "I don't take long-acting insulin" opt-out → stores null), delivery method, CGM device. One optional picker: pen needle brand (shown only when delivery method is a pen type). No skip path. Gate passes only when all four mandatory fields have been answered.
-- [ ] **B2B-02**: Equipment changelog data model — `src/types/equipment.ts` defines EquipmentChangeEntry, HypoTreatment, DailyTIR, DataConsent interfaces. `src/utils/equipmentProfile.ts` implements: `getActiveEquipment(field)`, `getCurrentEquipmentProfile()`, `getEquipmentAtTime(field, timestamp)`, `changeEquipment(field, newValue, reason?)`. `changeEquipment` closes the previous entry (sets ended_at) and opens a new one (sets started_at) using a single shared timestamp so ended_at === started_at on closing entry.
+- [x] **B2B-02**: Equipment changelog data model — `src/types/equipment.ts` defines EquipmentChangeEntry, HypoTreatment, DailyTIR, DataConsent interfaces. `src/utils/equipmentProfile.ts` implements: `getActiveEquipment(field)`, `getCurrentEquipmentProfile()`, `getEquipmentAtTime(field, timestamp)`, `changeEquipment(field, newValue, reason?)`. `changeEquipment` closes the previous entry (sets ended_at) and opens a new one (sets started_at) using a single shared timestamp so ended_at === started_at on closing entry.
 - [ ] **B2B-03**: Equipment change confirmation modal — `EquipmentChangeConfirmation` modal shown in Settings before any equipment field change is committed. User must confirm before `changeEquipment()` is called.
 - [ ] **B2B-04**: Equipment settings section — "My Equipment" section in SettingsScreen displaying all active equipment fields with edit capability (triggers B2B-03 confirmation modal on each change).
 - [ ] **B2B-05**: Meal stamping — at meal save time in MealLogScreen, `getCurrentEquipmentProfile()` is called once and `rapidInsulinBrand` → `insulin_brand` and `deliveryMethod` → `delivery_method` are stamped immutably onto the meal record. A read-only insulin brand chip is shown after the units input in MealLogScreen. `Meal` interface in storage.ts extended with optional `insulin_brand` and `delivery_method` fields.
 - [ ] **B2B-06**: Hypo treatment quick log — optional "Treating a low?" button on HomeScreen (below AveragedStatsPanel, above Log Meal / Quick Log buttons; red/amber colour token; always visible, not conditional on glucose level). Tap opens HypoTreatmentSheet: (1) current glucose read-only, (2) treatment type picker (Glucose tablets / Juice / Sweets / Gel / Other), (3) amount_value numeric + amount_unit picker (tablets / ml / g) inline, (4) Save / Cancel. Recovery curve fetched on next app foreground after 60-min window closes (up to 12 readings; partial arrays valid). Not via background job.
-- [ ] **B2B-07**: TIR calculation — `src/utils/timeInRange.ts` implements `calculateDailyTIR()`. Triggered once per calendar day on app foreground. Calculates TIR for yesterday using all available Nightscout readings. Stores DailyTIR record under `daily_tir` key in AsyncStorage if no record exists for that date (never overwrites). Prunes store to 90 days on each write. No UI display this phase.
+- [x] **B2B-07**: TIR calculation — `src/utils/timeInRange.ts` implements `calculateDailyTIR()`. Triggered once per calendar day on app foreground. Calculates TIR for yesterday using all available Nightscout readings. Stores DailyTIR record under `daily_tir` key in AsyncStorage if no record exists for that date (never overwrites). Prunes store to 90 days on each write. No UI display this phase.
 - [ ] **B2B-08**: Data consent toggle — "Data & Research" section in SettingsScreen. Toggle OFF by default. Stores `DataConsent` with `consented`, `consented_at`, and `version` fields. On app launch: if stored version !== CURRENT_CONSENT_VERSION, show re-consent modal and reset consented to false.
 
 ## v2 Requirements
@@ -123,12 +123,12 @@
 | MKTG-02 | Phase 6 | Pending |
 | LEGAL-01 | Phase 6 | Complete — sent 2026-03-18, awaiting response |
 | B2B-01 | Phase 8 | Pending |
-| B2B-02 | Phase 8 | Pending |
+| B2B-02 | Phase 8 | Complete |
 | B2B-03 | Phase 8 | Pending |
 | B2B-04 | Phase 8 | Pending |
 | B2B-05 | Phase 8 | Pending |
 | B2B-06 | Phase 8 | Pending |
-| B2B-07 | Phase 8 | Pending |
+| B2B-07 | Phase 8 | Complete |
 | B2B-08 | Phase 8 | Pending |
 
 **Coverage:**

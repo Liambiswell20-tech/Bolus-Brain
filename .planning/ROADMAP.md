@@ -132,7 +132,7 @@ Phases 1 → 2 → 3 → 4 → 5 execute in numeric order.
 | 4. Session Grouping, Pattern Recall & HomeScreen Redesign | 7/7 | Complete   | 2026-03-24 |
 | 5. Data Model Extensions and Editing | 0/TBD | Not started | - |
 | 6. Route to Market | 0/3 | Planned | - |
-| 8. B2B Data Capture Layer | 0/8 | Planned | - |
+| 8. B2B Data Capture Layer | 1/8 | In Progress|  |
 
 ### Phase 7: Premium features and monetization strategy
 
@@ -160,7 +160,7 @@ Plans:
 **Plans**: 8 plans
 
 Plans:
-- [ ] 08-01-PLAN.md — Wave 0: src/types/equipment.ts interfaces + equipmentProfile.test.ts (11 stubs) + timeInRange.test.ts (6 stubs)
+- [x] 08-01-PLAN.md — Wave 0: src/types/equipment.ts interfaces + equipmentProfile.test.ts (11 stubs) + timeInRange.test.ts (6 stubs)
 - [ ] 08-02-PLAN.md — Wave 1: Implement equipmentProfile.ts (4 functions) + timeInRange.ts (3 functions), turn all 17 stubs green
 - [ ] 08-03-PLAN.md — Wave 2: EquipmentOnboardingScreen + App.tsx navigation gate (gateChecked state, conditional initialRouteName)
 - [ ] 08-04-PLAN.md — Wave 3: EquipmentChangeConfirmation modal + "My Equipment" section in SettingsScreen
