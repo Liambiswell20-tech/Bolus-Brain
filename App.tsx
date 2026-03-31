@@ -1,11 +1,13 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useFonts, Outfit_400Regular, Outfit_600SemiBold } from '@expo-google-fonts/outfit';
 import { JetBrainsMono_400Regular } from '@expo-google-fonts/jetbrains-mono';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View } from 'react-native';
+import EquipmentOnboardingScreen from './src/screens/EquipmentOnboardingScreen';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import HomeScreen from './src/screens/HomeScreen';
 import MealLogScreen from './src/screens/MealLogScreen';
@@ -20,6 +22,7 @@ import type { InsulinLogType } from './src/services/storage';
 import { migrateLegacySessions } from './src/services/storage';
 
 export type RootStackParamList = {
+  EquipmentOnboarding: undefined;
   Home: undefined;
   MealLog: undefined;
   MealHistory: undefined;
@@ -43,10 +46,24 @@ export default function App() {
     JetBrainsMono_400Regular,
   });
 
+  const [gateChecked, setGateChecked] = useState(false);
+  const [needsOnboarding, setNeedsOnboarding] = useState(false);
+
   useEffect(() => {
     migrateLegacySessions().catch(err =>
       console.warn('[App] migration error:', err)
     );
+  }, []);
+
+  // Equipment onboarding gate: show EquipmentOnboardingScreen on first launch
+  useEffect(() => {
+    AsyncStorage.getItem('equipment_changelog')
+      .then(raw => {
+        const entries = raw ? JSON.parse(raw) : [];
+        setNeedsOnboarding(!Array.isArray(entries) || entries.length === 0);
+      })
+      .catch(() => setNeedsOnboarding(true))
+      .finally(() => setGateChecked(true));
   }, []);
 
   // Release splash when fonts ready OR after error
@@ -65,8 +82,9 @@ export default function App() {
   }, []);
 
   // Don't render navigation until fonts are ready (or errored/timed out)
+  // and until gate check resolves — prevents flash of wrong initial route
   // fontError: render anyway (fonts will fall back to system)
-  if (!fontsLoaded && !fontError) {
+  if ((!fontsLoaded && !fontError) || !gateChecked) {
     return <View style={{ flex: 1, backgroundColor: '#050706' }} />;
   }
 
@@ -75,6 +93,7 @@ export default function App() {
       <NavigationContainer>
         <StatusBar style="light" />
         <Stack.Navigator
+          initialRouteName={needsOnboarding ? 'EquipmentOnboarding' : 'Home'}
           screenOptions={{
             headerStyle: { backgroundColor: '#050706' },
             headerTintColor: '#fff',
@@ -82,6 +101,11 @@ export default function App() {
             contentStyle: { backgroundColor: '#050706' },
           }}
         >
+          <Stack.Screen
+            name="EquipmentOnboarding"
+            component={EquipmentOnboardingScreen}
+            options={{ headerShown: false, gestureEnabled: false }}
+          />
           <Stack.Screen name="Home" component={HomeScreen} options={{ headerShown: false }} />
           <Stack.Screen name="MealLog" component={MealLogScreen} options={{ title: 'Log meal' }} />
           <Stack.Screen name="MealHistory" component={MealHistoryScreen} options={{ title: 'History' }} />
