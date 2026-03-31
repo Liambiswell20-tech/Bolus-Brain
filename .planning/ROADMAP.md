@@ -132,7 +132,7 @@ Phases 1 → 2 → 3 → 4 → 5 execute in numeric order.
 | 4. Session Grouping, Pattern Recall & HomeScreen Redesign | 7/7 | Complete   | 2026-03-24 |
 | 5. Data Model Extensions and Editing | 0/TBD | Not started | - |
 | 6. Route to Market | 0/3 | Planned | - |
-| 8. B2B Data Capture Layer | 3/8 | In Progress|  |
+| 8. B2B Data Capture Layer | 4/8 | In Progress|  |
 
 ### Phase 7: Premium features and monetization strategy
 
@@ -164,7 +164,7 @@ Plans:
 - [x] 08-02-PLAN.md — Wave 1: Implement equipmentProfile.ts (4 functions) + timeInRange.ts (3 functions), turn all 17 stubs green
 - [x] 08-03-PLAN.md — Wave 2: EquipmentOnboardingScreen + App.tsx navigation gate (gateChecked state, conditional initialRouteName)
 - [ ] 08-04-PLAN.md — Wave 3: EquipmentChangeConfirmation modal + "My Equipment" section in SettingsScreen
-- [ ] 08-05-PLAN.md — Wave 3: Meal stamping (Meal interface extension + MealLogScreen stamp + read-only chip)
+- [x] 08-05-PLAN.md — Wave 3: Meal stamping (Meal interface extension + MealLogScreen stamp + read-only chip)
 - [ ] 08-06-PLAN.md — Wave 3: HypoTreatmentSheet + HomeScreen hypo button + useAppForeground hook + App.tsx TIR/recovery foreground handler
 - [ ] 08-07-PLAN.md — Wave 3: Data & Research consent toggle in SettingsScreen (versioned, OFF by default)
 - [ ] 08-08-PLAN.md — Wave 4: Full test run + human verification checkpoint (all B2B-01 through B2B-08 acceptance checks)
