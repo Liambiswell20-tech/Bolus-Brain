@@ -2,8 +2,10 @@
 // Phase 2 component prop contracts.
 // Phase 3 wire-in: MatchingSlotProps.matchData widened to null | MatchSummary.
 // Phase 4: MealHistoryCardProps (renamed from ExpandableCard) and MealBottomSheetProps added.
+// Phase 8: HypoTreatmentSheetProps added (B2B-06).
 
 import type { GlucoseResponse, Meal, SessionWithMeals } from '../services/storage';
+import type { HypoTreatment } from '../types/equipment';
 import type { OutcomeBadge } from '../utils/outcomeClassifier';
 import type { MatchSummary } from '../services/matching';
 
@@ -59,6 +61,18 @@ export interface MealBottomSheetProps {
   sessions: SessionWithMeals[];  // already capped to 10 by caller
   visible: boolean;
   onClose: () => void;
+}
+
+// ---- HypoTreatmentSheet ----
+// Modal bottom sheet for logging a hypo treatment event.
+// Fields (in order): current glucose (read-only), treatment type picker,
+// amount value + unit inline, Save/Cancel.
+// Per B2B-06: onSave receives a partial HypoTreatment (id, logged_at, glucose_readings_after added by caller).
+export interface HypoTreatmentSheetProps {
+  visible: boolean;
+  currentGlucose: number | null;
+  onClose: () => void;
+  onSave: (treatment: Omit<HypoTreatment, 'id' | 'logged_at' | 'glucose_readings_after'>) => void;
 }
 
 // ---- DayGroupHeader ----
