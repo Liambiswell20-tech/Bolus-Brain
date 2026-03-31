@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: unknown
-stopped_at: Completed 08-02-PLAN.md
-last_updated: "2026-03-31T17:10:25.971Z"
+stopped_at: Completed 08-03-PLAN.md
+last_updated: "2026-03-31T17:15:52.030Z"
 progress:
   total_phases: 8
   completed_phases: 3
   total_plans: 32
-  completed_plans: 22
+  completed_plans: 23
 ---
 
 # Project State
@@ -24,7 +24,7 @@ See: .planning/PROJECT.md (updated 2026-03-18)
 ## Current Position
 
 Phase: 08 (b2b-data-capture-layer) — EXECUTING
-Plan: 3 of 8
+Plan: 4 of 8
 
 ## Performance Metrics
 
@@ -67,6 +67,7 @@ Plan: 3 of 8
 | Phase 04 P07 | 2 | 2 tasks | 2 files |
 | Phase 08 P01 | 4 | 3 tasks | 3 files |
 | Phase 08 P02 | 4 | 2 tasks | 4 files |
+| Phase 08 P03 | 3 | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -119,6 +120,7 @@ Key constraints affecting this milestone:
 - [Phase 08]: IIFE require pattern for missing module stubs — avoids top-level import that would crash Jest before any tests run
 - [Phase 08]: Single Date.now() call in changeEquipment guarantees ended_at === started_at on the transition — prevents timeline gaps
 - [Phase 08]: NO_LONG_ACTING sentinel maps to null in getCurrentEquipmentProfile — simplifies downstream UI logic
+- [Phase 08]: EquipmentOnboarding added as first entry in RootStackParamList; gateChecked blocks NavigationContainer render alongside font loading to prevent flash of wrong initial route; navigation.replace() used to prevent back-navigation to onboarding gate
 
 ### Roadmap Evolution
 
@@ -138,6 +140,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-31T17:10:25.966Z
-Stopped at: Completed 08-02-PLAN.md
+Last session: 2026-03-31T17:15:52.026Z
+Stopped at: Completed 08-03-PLAN.md
 Resume file: None
