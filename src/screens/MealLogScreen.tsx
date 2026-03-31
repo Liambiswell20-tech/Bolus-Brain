@@ -26,6 +26,7 @@ import {
 } from '../services/carbEstimate';
 import type { SessionMatch, MatchSummary } from '../services/matching';
 import { findSimilarSessions } from '../services/matching';
+import { getCurrentEquipmentProfile } from '../utils/equipmentProfile';
 import { getMealFingerprint } from '../utils/mealFingerprint';
 import { classifyOutcome } from '../utils/outcomeClassifier';
 import { glucoseColor } from '../utils/glucoseColor';
@@ -79,6 +80,9 @@ export default function MealLogScreen() {
   const [matchSummary, setMatchSummary] = useState<MatchSummary | null>(null);
   const [allMatchedSessions, setAllMatchedSessions] = useState<SessionWithMeals[]>([]);
 
+  // Equipment stamp chip state (Phase 8 — B2B-05)
+  const [activeInsulinBrand, setActiveInsulinBrand] = useState<string | null>(null);
+
   // Previous meal sheet state
   const [sheetSessions, setSheetSessions] = useState<SessionWithMeals[]>([]);
   const [sheetVisible, setSheetVisible] = useState(false);
@@ -88,6 +92,13 @@ export default function MealLogScreen() {
       setEstimatesLeft(n);
       if (n <= 0) setRateLimitHit(true);
     });
+  }, []);
+
+  // Load active insulin brand on mount for chip display (Phase 8 — B2B-05)
+  useEffect(() => {
+    getCurrentEquipmentProfile()
+      .then(profile => setActiveInsulinBrand(profile?.rapidInsulinBrand ?? null))
+      .catch(() => {});
   }, []);
 
   // Debounced live matching — fires 400ms after mealName changes
@@ -231,12 +242,27 @@ export default function MealLogScreen() {
         }
       } catch {}
 
+      // B2B-05: stamp equipment fields at save time — called once, never per field
+      let equipmentStamp: { insulin_brand?: string; delivery_method?: string } = {};
+      try {
+        const profile = await getCurrentEquipmentProfile();
+        if (profile) {
+          equipmentStamp = {
+            insulin_brand: profile.rapidInsulinBrand,
+            delivery_method: profile.deliveryMethod,
+          };
+        }
+      } catch (err) {
+        console.warn('[MealLogScreen] could not fetch equipment profile for stamping', err);
+      }
+
       const meal = await saveMeal({
         name: mealName.trim(),
         photoUri,
         insulinUnits: isNaN(units) ? 0 : units,
         startGlucose,
         carbsEstimated: parseCarbsGrams(carbEstimate),
+        ...equipmentStamp,
       }, loggedAt);
 
       fetchAndStoreCurve(meal.id).catch(() => {});
@@ -407,6 +433,13 @@ export default function MealLogScreen() {
           keyboardType="decimal-pad"
           returnKeyType="done"
         />
+
+        {/* Active insulin brand chip — read-only, shows stamped brand (B2B-05) */}
+        {activeInsulinBrand && (
+          <View style={styles.insulinBrandChip}>
+            <Text style={styles.insulinBrandChipText}>{activeInsulinBrand}</Text>
+          </View>
+        )}
 
         {/* Late Entry toggle */}
         <Pressable
@@ -648,6 +681,21 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#636366',
     fontStyle: 'italic',
+  },
+
+  // Equipment stamp chip (B2B-05) — read-only, shown below insulin units input
+  insulinBrandChip: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#2C2C2E', // COLORS.surfaceRaised
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    marginTop: 4,
+    marginBottom: 16,
+  },
+  insulinBrandChipText: {
+    color: '#8E8E93', // COLORS.textSecondary
+    fontSize: 12,
   },
 
   saveBtn: {
