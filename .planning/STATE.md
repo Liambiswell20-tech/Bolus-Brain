@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: unknown
-stopped_at: Completed 08-07-PLAN.md
-last_updated: "2026-03-31T17:21:17.805Z"
+stopped_at: Completed 08-04-PLAN.md
+last_updated: "2026-03-31T17:22:01.825Z"
 progress:
   total_phases: 8
   completed_phases: 3
   total_plans: 32
-  completed_plans: 25
+  completed_plans: 26
 ---
 
 # Project State
@@ -24,7 +24,7 @@ See: .planning/PROJECT.md (updated 2026-03-18)
 ## Current Position
 
 Phase: 08 (b2b-data-capture-layer) — EXECUTING
-Plan: 6 of 8
+Plan: 7 of 8
 
 ## Performance Metrics
 
@@ -70,6 +70,7 @@ Plan: 6 of 8
 | Phase 08 P03 | 3 | 2 tasks | 2 files |
 | Phase 08 P05 | 12 | 2 tasks | 2 files |
 | Phase 08 P07 | 8 | 1 tasks | 1 files |
+| Phase 08 P04 | 4 | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -125,6 +126,8 @@ Key constraints affecting this milestone:
 - [Phase 08]: EquipmentOnboarding added as first entry in RootStackParamList; gateChecked blocks NavigationContainer render alongside font loading to prevent flash of wrong initial route; navigation.replace() used to prevent back-navigation to onboarding gate
 - [Phase 08]: insulin_brand and delivery_method excluded from updateMeal() Pick type — immutable by design
 - [Phase 08]: Used COLORS.text (not COLORS.textPrimary) for consent label styles — textPrimary does not exist in theme.ts token set
+- [Phase 08]: EquipmentChangeConfirmation uses transparent slide Modal matching HomeScreen quick-log sheet pattern
+- [Phase 08]: SettingsScreen wrapped in Fragment to allow sibling Modals outside KeyboardAvoidingView — avoids z-index stacking issues
 
 ### Roadmap Evolution
 
@@ -144,6 +147,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-31T17:21:17.800Z
-Stopped at: Completed 08-07-PLAN.md
+Last session: 2026-03-31T17:22:01.819Z
+Stopped at: Completed 08-04-PLAN.md
 Resume file: None
