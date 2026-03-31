@@ -12,6 +12,7 @@ Milestone 2 transforms BolusBrain from a data-collection app into an intelligent
 - [x] **Phase 4: Session Grouping, Pattern Recall & HomeScreen Redesign** - Arc gauge HomeScreen, pattern recall bottom sheet, averaged stats, HbA1c disclaimer (completed 2026-03-24)
 - [ ] **Phase 5: Data Model Extensions and Editing** - Add AI confidence tracking, long-acting overnight window, and dose editing
 - [ ] **Phase 6: Route to Market** - Complete landing page, email capture, and MHRA regulatory contact
+- [ ] **Phase 8: B2B Data Capture Layer** - Equipment onboarding gate, equipment changelog, meal stamping, hypo treatment quick log, TIR calculation, and data consent — positioning the dataset for acquisition
 
 ## Phase Details
 
@@ -131,6 +132,7 @@ Phases 1 → 2 → 3 → 4 → 5 execute in numeric order.
 | 4. Session Grouping, Pattern Recall & HomeScreen Redesign | 7/7 | Complete   | 2026-03-24 |
 | 5. Data Model Extensions and Editing | 0/TBD | Not started | - |
 | 6. Route to Market | 0/3 | Planned | - |
+| 8. B2B Data Capture Layer | 0/TBD | Not started | - |
 
 ### Phase 7: Premium features and monetization strategy
 
@@ -141,3 +143,18 @@ Phases 1 → 2 → 3 → 4 → 5 execute in numeric order.
 
 Plans:
 - [ ] TBD (run /gsd:plan-phase 7 to break down)
+
+### Phase 8: B2B Data Capture Layer
+
+**Goal**: The app records which insulin brand and delivery device was active at every data point, tracks hypo treatment events with recovery curves, calculates time-in-range longitudinally, and captures user consent — creating a structured dataset that is commercially credible for acquisition or partnership positioning
+**Depends on**: Phase 4 (HomeScreen and storage hardening must be complete)
+**Requirements**: B2B-01, B2B-02, B2B-03, B2B-04, B2B-05, B2B-06, B2B-07, B2B-08
+**Success Criteria** (what must be TRUE):
+  1. On first launch (or after storage clear), EquipmentOnboardingScreen is shown full-screen before HomeScreen — user cannot reach HomeScreen without completing the 4 mandatory pickers (rapid insulin, long-acting insulin, delivery method, CGM device)
+  2. Every meal saved after this phase ships has immutable `insulin_brand` and `delivery_method` fields stamped from `getCurrentEquipmentProfile()` at save time
+  3. Changing any equipment field in Settings shows a confirmation modal before committing the change — the equipment changelog stores the old and new values with a shared timestamp
+  4. The HomeScreen has an optional "Treating a low?" button; tapping it opens a bottom sheet where the user can log treatment type, amount, and unit — the record is saved as a `HypoTreatment` with the current glucose reading pre-filled
+  5. On app foreground, if no `DailyTIR` record exists for yesterday, one is silently calculated and stored; the store never exceeds 90 records
+  6. Settings screen has a "Data & Research" toggle that is OFF by default; toggling it saves a `DataConsent` record with version "1.0"
+  7. All B2B-02 unit tests pass: equipmentProfile.test.ts (11 cases) and timeInRange.test.ts (6 cases)
+**Plans**: TBD
