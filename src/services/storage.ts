@@ -1,13 +1,17 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { CurvePoint, fetchGlucoseRange } from './nightscout';
 
+import type { HypoTreatment } from '../types/equipment';
+
 const MEALS_KEY = 'glucolog_meals';
 const SESSIONS_KEY = 'glucolog_sessions';
 const INSULIN_LOGS_KEY = 'glucolog_insulin_logs';
 const MIGRATION_V1_KEY = 'glucolog_migration_v1';
 const HBA1C_CACHE_KEY = 'glucolog_hba1c_cache';
 const GLUCOSE_STORE_KEY = 'glucolog_glucose_store';
+const HYPO_TREATMENTS_KEY = 'hypo_treatments';
 const THREE_HOURS_MS = 3 * 60 * 60 * 1000;
+const TWO_HOURS_MS = 2 * 60 * 60 * 1000;
 const TWELVE_HOURS_MS = 12 * 60 * 60 * 1000;
 const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
 
@@ -530,6 +534,53 @@ async function _fetchCurveForSession(sessionId: string, sessions: Session[]): Pr
 
   const updated = sessions.map(s => (s.id === sessionId ? { ...s, glucoseResponse } : s));
   await saveSessionsRaw(updated);
+}
+
+// --- hypo treatment helpers ---
+
+export async function loadHypoTreatments(): Promise<HypoTreatment[]> {
+  try {
+    const raw = await AsyncStorage.getItem(HYPO_TREATMENTS_KEY);
+    if (!raw) return [];
+    return JSON.parse(raw) as HypoTreatment[];
+  } catch {
+    console.warn('[storage] loadHypoTreatments: getItem/parse failed');
+    return [];
+  }
+}
+
+export async function updateHypoTreatment(
+  id: string,
+  changes: Partial<Pick<HypoTreatment, 'treatment_type' | 'amount_value' | 'amount_unit' | 'notes' | 'logged_at'>>
+): Promise<void> {
+  const treatments = await loadHypoTreatments();
+  const updated = treatments.map(t => (t.id === id ? { ...t, ...changes } : t));
+  await AsyncStorage.setItem(HYPO_TREATMENTS_KEY, JSON.stringify(updated));
+}
+
+export async function deleteHypoTreatment(id: string): Promise<void> {
+  const treatments = await loadHypoTreatments();
+  await AsyncStorage.setItem(HYPO_TREATMENTS_KEY, JSON.stringify(treatments.filter(t => t.id !== id)));
+}
+
+export async function fetchAndStoreHypoRecoveryCurve(treatmentId: string): Promise<void> {
+  const raw = await AsyncStorage.getItem(HYPO_TREATMENTS_KEY);
+  const treatments: HypoTreatment[] = raw ? JSON.parse(raw) : [];
+  const treatment = treatments.find(t => t.id === treatmentId);
+  if (!treatment) return;
+
+  const fromMs = new Date(treatment.logged_at).getTime();
+  const toMs = fromMs + TWO_HOURS_MS;
+  const nowMs = Date.now();
+
+  const readings = await fetchGlucoseRange(fromMs, Math.min(toMs, nowMs));
+  if (readings.length === 0) return;
+
+  const mmolValues = readings.map(r => r.mmol);
+  const updated = treatments.map(t =>
+    t.id === treatmentId ? { ...t, glucose_readings_after: mmolValues } : t
+  );
+  await AsyncStorage.setItem(HYPO_TREATMENTS_KEY, JSON.stringify(updated));
 }
 
 // One-time idempotent migration: creates proper Session records for meals that pre-date

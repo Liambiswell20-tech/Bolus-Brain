@@ -14,7 +14,7 @@ import type { HypoTreatmentSheetProps } from './types';
 import type { HypoTreatment } from '../types/equipment';
 
 const TREATMENT_TYPES = ['Glucose tablets', 'Juice', 'Sweets', 'Gel', 'Other'] as const;
-const AMOUNT_UNITS: Array<'tablets' | 'ml' | 'g'> = ['tablets', 'ml', 'g'];
+const AMOUNT_UNITS: Array<'tablets' | 'ml' | 'g' | 'food'> = ['tablets', 'ml', 'g', 'food'];
 
 export default function HypoTreatmentSheet({
   visible,
@@ -24,13 +24,15 @@ export default function HypoTreatmentSheet({
 }: HypoTreatmentSheetProps) {
   const [treatmentType, setTreatmentType] = useState<string>('Glucose tablets');
   const [amountValue, setAmountValue] = useState('');
-  const [amountUnit, setAmountUnit] = useState<'tablets' | 'ml' | 'g'>('tablets');
+  const [amountUnit, setAmountUnit] = useState<'tablets' | 'ml' | 'g' | 'food'>('tablets');
+  const [notes, setNotes] = useState('');
 
   function handleClose() {
     // Reset state on close
     setTreatmentType('Glucose tablets');
     setAmountValue('');
     setAmountUnit('tablets');
+    setNotes('');
     onClose();
   }
 
@@ -39,16 +41,19 @@ export default function HypoTreatmentSheet({
 
   function handleSave() {
     if (saveDisabled) return;
+    const trimmedNotes = notes.trim();
     onSave({
       glucose_at_event: currentGlucose ?? 0,
       treatment_type: treatmentType,
       amount_value: parsedAmount,
       amount_unit: amountUnit,
+      ...(trimmedNotes ? { notes: trimmedNotes } : {}),
     });
     // Reset state after save
     setTreatmentType('Glucose tablets');
     setAmountValue('');
     setAmountUnit('tablets');
+    setNotes('');
   }
 
   return (
@@ -103,7 +108,20 @@ export default function HypoTreatmentSheet({
             </View>
           </View>
 
-          {/* 3. Amount row — value input + unit picker chips */}
+          {/* 3. What did you have? — optional free text */}
+          <View style={styles.section}>
+            <Text style={styles.fieldLabel}>WHAT DID YOU HAVE?</Text>
+            <TextInput
+              style={styles.notesInput}
+              placeholder="e.g. banana, orange juice, Haribo..."
+              placeholderTextColor={COLORS.textMuted}
+              value={notes}
+              onChangeText={setNotes}
+              returnKeyType="next"
+            />
+          </View>
+
+          {/* 4. Amount row — value input + unit picker chips */}
           <View style={styles.section}>
             <Text style={styles.fieldLabel}>AMOUNT</Text>
             <View style={styles.amountRow}>
@@ -232,6 +250,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
+  },
+  notesInput: {
+    backgroundColor: COLORS.surfaceRaised,
+    color: COLORS.text,
+    fontSize: 15,
+    padding: 14,
+    borderRadius: 12,
+    fontFamily: FONTS.regular,
   },
   amountInput: {
     flex: 1,

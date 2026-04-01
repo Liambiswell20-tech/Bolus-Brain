@@ -15,15 +15,20 @@ import {
 } from 'react-native';
 import {
   fetchAndStoreBasalCurve,
+  fetchAndStoreHypoRecoveryCurve,
   BasalCurve,
+  GlucoseResponse,
   InsulinLog,
   Meal,
   SessionWithMeals,
   loadSessionsWithMeals,
   loadInsulinLogs,
+  loadHypoTreatments,
 } from '../services/storage';
+import type { HypoTreatment } from '../types/equipment';
 import { MealHistoryCard } from '../components/MealHistoryCard';
 import { MealBottomSheet } from '../components/MealBottomSheet';
+import { GlucoseChart } from '../components/GlucoseChart';
 import { DayGroupHeader } from '../components/DayGroupHeader';
 import { SessionSubHeader } from '../components/SessionSubHeader';
 import { getMealFingerprint } from '../utils/mealFingerprint';
@@ -229,20 +234,105 @@ function InsulinLogCard({ log, onRefresh }: { log: InsulinLog; onRefresh: () => 
   );
 }
 
+// --- hypo treatment card ---
+
+function buildHypoChartResponse(treatment: HypoTreatment): GlucoseResponse | null {
+  const readings = treatment.glucose_readings_after;
+  if (!readings || readings.length < 2) return null;
+  const fromMs = new Date(treatment.logged_at).getTime();
+  return {
+    startGlucose: readings[0],
+    peakGlucose: Math.max(...readings),
+    timeToPeakMins: 0,
+    totalRise: 0,
+    endGlucose: readings[readings.length - 1],
+    fallFromPeak: 0,
+    timeFromPeakToEndMins: 0,
+    readings: readings.map((mmol, i) => ({ mmol, date: fromMs + i * 15 * 60 * 1000 })),
+    isPartial: readings.length < 8,
+    fetchedAt: new Date().toISOString(),
+  };
+}
+
+function HypoTreatmentCard({ treatment, onRefresh }: { treatment: HypoTreatment; onRefresh: () => void }) {
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const [fetching, setFetching] = useState(false);
+  const chartResponse = buildHypoChartResponse(treatment);
+
+  async function handleFetchCurve() {
+    setFetching(true);
+    try {
+      await fetchAndStoreHypoRecoveryCurve(treatment.id);
+      onRefresh();
+    } finally {
+      setFetching(false);
+    }
+  }
+
+  return (
+    <View style={[styles.card, { borderLeftWidth: 3, borderLeftColor: '#FF3B30' }]}>
+      <View style={styles.cardHeader}>
+        <Text style={styles.cardDate}>{formatDate(treatment.logged_at)}</Text>
+        <View style={[styles.badge, { backgroundColor: '#3A0A0A' }]}>
+          <Text style={[styles.badgeText, { color: '#FF3B30' }]}>Hypo treatment</Text>
+        </View>
+        <Pressable
+          style={styles.editBtn}
+          onPress={() => navigation.navigate('EditHypo', { treatmentId: treatment.id })}
+          hitSlop={8}
+        >
+          <Text style={styles.editBtnText}>Edit</Text>
+        </Pressable>
+      </View>
+
+      <View style={styles.insulinSummaryRow}>
+        <Text style={styles.insulinUnits}>
+          {treatment.treatment_type} — {treatment.amount_value} {treatment.amount_unit}
+        </Text>
+        <Text style={styles.insulinStartGlucose}>
+          {treatment.glucose_at_event.toFixed(1)} mmol/L
+        </Text>
+      </View>
+
+      {treatment.notes ? (
+        <Text style={styles.hypoNotes}>{treatment.notes}</Text>
+      ) : null}
+
+      {chartResponse ? (
+        <GlucoseChart response={chartResponse} height={120} />
+      ) : (
+        <Pressable style={styles.fetchBtn} onPress={handleFetchCurve} disabled={fetching}>
+          {fetching
+            ? <ActivityIndicator size="small" color="#FF3B30" />
+            : <Text style={[styles.fetchBtnText, { color: '#fff' }]}>
+                {treatment.glucose_readings_after && treatment.glucose_readings_after.length > 0
+                  ? 'Refresh recovery curve'
+                  : 'Load recovery curve'}
+              </Text>
+          }
+        </Pressable>
+      )}
+    </View>
+  );
+}
+
 // --- screen ---
 
 type ListRow =
   | { type: 'today-meal';      meal: Meal; sessionId: string }
   | { type: 'today-session';   session: SessionWithMeals }
   | { type: 'today-insulin';   data: InsulinLog }
+  | { type: 'today-hypo';      data: HypoTreatment }
   | { type: 'day-header';      dateKey: string; label: string; count: number; expanded: boolean }
   | { type: 'session-subhdr';  session: SessionWithMeals; dateKey: string }
   | { type: 'past-meal';       meal: Meal; dateKey: string }
-  | { type: 'past-insulin';    data: InsulinLog; dateKey: string };
+  | { type: 'past-insulin';    data: InsulinLog; dateKey: string }
+  | { type: 'past-hypo';       data: HypoTreatment; dateKey: string };
 
 export default function MealHistoryScreen() {
   const [sessions, setSessions] = useState<SessionWithMeals[]>([]);
   const [insulinLogs, setInsulinLogs] = useState<InsulinLog[]>([]);
+  const [hypoTreatments, setHypoTreatments] = useState<HypoTreatment[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedDays, setExpandedDays] = useState<Set<string>>(new Set());
   const [sheetSessions, setSheetSessions] = useState<SessionWithMeals[]>([]);
@@ -251,9 +341,10 @@ export default function MealHistoryScreen() {
 
   const mergeItems = useCallback(async (showSpinner: boolean) => {
     if (showSpinner) setLoading(true);
-    const [loadedSessions, loadedInsulin] = await Promise.all([
+    const [loadedSessions, loadedInsulin, loadedHypo] = await Promise.all([
       loadSessionsWithMeals(),
       loadInsulinLogs(),
+      loadHypoTreatments(),
     ]);
 
     // On first load, open the most recent past day
@@ -263,6 +354,7 @@ export default function MealHistoryScreen() {
       const allDates = [
         ...loadedSessions.map(s => localDateKey(s.startedAt)),
         ...loadedInsulin.map(l => localDateKey(l.loggedAt)),
+        ...loadedHypo.map(h => localDateKey(h.logged_at)),
       ];
       const pastKeys = [...new Set(allDates)]
         .filter(k => k !== today)
@@ -274,6 +366,7 @@ export default function MealHistoryScreen() {
 
     setSessions(loadedSessions);
     setInsulinLogs(loadedInsulin);
+    setHypoTreatments(loadedHypo);
     if (showSpinner) setLoading(false);
   }, []);
 
@@ -339,10 +432,19 @@ export default function MealHistoryScreen() {
       insulinByDay.get(key)!.push(log);
     }
 
+    // Build day buckets for hypo treatments
+    const hypoByDay = new Map<string, HypoTreatment[]>();
+    for (const h of hypoTreatments) {
+      const key = localDateKey(h.logged_at);
+      if (!hypoByDay.has(key)) hypoByDay.set(key, []);
+      hypoByDay.get(key)!.push(h);
+    }
+
     // All unique day keys
     const allDayKeys = [...new Set([
       ...sessionsByDay.keys(),
       ...insulinByDay.keys(),
+      ...hypoByDay.keys(),
     ])].sort((a, b) => b.localeCompare(a));
 
     const rows: ListRow[] = [];
@@ -350,15 +452,18 @@ export default function MealHistoryScreen() {
     // Today's items — flat, no header
     const todaySessions = sessionsByDay.get(today) ?? [];
     const todayInsulin = insulinByDay.get(today) ?? [];
+    const todayHypo = hypoByDay.get(today) ?? [];
 
-    // Interleave today's sessions (meals) and insulin by time, newest-first
+    // Interleave today's sessions (meals), insulin, and hypo by time, newest-first
     type TodayEntry =
       | { kind: 'session'; session: SessionWithMeals; time: number }
-      | { kind: 'insulin'; log: InsulinLog; time: number };
+      | { kind: 'insulin'; log: InsulinLog; time: number }
+      | { kind: 'hypo'; treatment: HypoTreatment; time: number };
 
     const todayEntries: TodayEntry[] = [
       ...todaySessions.map(s => ({ kind: 'session' as const, session: s, time: new Date(s.startedAt).getTime() })),
       ...todayInsulin.map(l => ({ kind: 'insulin' as const, log: l, time: new Date(l.loggedAt).getTime() })),
+      ...todayHypo.map(h => ({ kind: 'hypo' as const, treatment: h, time: new Date(h.logged_at).getTime() })),
     ].sort((a, b) => b.time - a.time);
 
     for (const entry of todayEntries) {
@@ -370,6 +475,8 @@ export default function MealHistoryScreen() {
         for (const meal of s.meals) {
           rows.push({ type: 'today-meal', meal, sessionId: s.id });
         }
+      } else if (entry.kind === 'hypo') {
+        rows.push({ type: 'today-hypo', data: entry.treatment });
       } else {
         rows.push({ type: 'today-insulin', data: entry.log });
       }
@@ -379,7 +486,8 @@ export default function MealHistoryScreen() {
     for (const key of allDayKeys.filter(k => k !== today)) {
       const daySessions = sessionsByDay.get(key) ?? [];
       const dayInsulin = insulinByDay.get(key) ?? [];
-      const count = daySessions.reduce((acc, s) => acc + s.meals.length, 0) + dayInsulin.length;
+      const dayHypo = hypoByDay.get(key) ?? [];
+      const count = daySessions.reduce((acc, s) => acc + s.meals.length, 0) + dayInsulin.length + dayHypo.length;
       const expanded = expandedDays.has(key);
 
       rows.push({
@@ -391,14 +499,16 @@ export default function MealHistoryScreen() {
       });
 
       if (expanded) {
-        // Interleave sessions and insulin by time, newest-first
+        // Interleave sessions, insulin, and hypo by time, newest-first
         type PastEntry =
           | { kind: 'session'; session: SessionWithMeals; time: number }
-          | { kind: 'insulin'; log: InsulinLog; time: number };
+          | { kind: 'insulin'; log: InsulinLog; time: number }
+          | { kind: 'hypo'; treatment: HypoTreatment; time: number };
 
         const pastEntries: PastEntry[] = [
           ...daySessions.map(s => ({ kind: 'session' as const, session: s, time: new Date(s.startedAt).getTime() })),
           ...dayInsulin.map(l => ({ kind: 'insulin' as const, log: l, time: new Date(l.loggedAt).getTime() })),
+          ...dayHypo.map(h => ({ kind: 'hypo' as const, treatment: h, time: new Date(h.logged_at).getTime() })),
         ].sort((a, b) => b.time - a.time);
 
         for (const entry of pastEntries) {
@@ -410,6 +520,8 @@ export default function MealHistoryScreen() {
             for (const meal of s.meals) {
               rows.push({ type: 'past-meal', meal, dateKey: key });
             }
+          } else if (entry.kind === 'hypo') {
+            rows.push({ type: 'past-hypo', data: entry.treatment, dateKey: key });
           } else {
             rows.push({ type: 'past-insulin', data: entry.log, dateKey: key });
           }
@@ -418,9 +530,9 @@ export default function MealHistoryScreen() {
     }
 
     return rows;
-  }, [sessions, insulinLogs, expandedDays]);
+  }, [sessions, insulinLogs, hypoTreatments, expandedDays]);
 
-  const isEmpty = sessions.length === 0 && insulinLogs.length === 0;
+  const isEmpty = sessions.length === 0 && insulinLogs.length === 0 && hypoTreatments.length === 0;
 
   if (loading) {
     return (
@@ -449,8 +561,10 @@ export default function MealHistoryScreen() {
           if (row.type === 'today-meal') return `today_meal_${row.meal.id}`;
           if (row.type === 'today-session') return `today_session_${row.session.id}`;
           if (row.type === 'today-insulin') return `today_insulin_${row.data.id}`;
+          if (row.type === 'today-hypo') return `today_hypo_${row.data.id}`;
           if (row.type === 'session-subhdr') return `subhdr_${row.dateKey}_${row.session.id}`;
           if (row.type === 'past-meal') return `past_meal_${row.dateKey}_${row.meal.id}`;
+          if (row.type === 'past-hypo') return `past_hypo_${row.dateKey}_${row.data.id}`;
           return `past_insulin_${row.dateKey}_${row.data.id}`;
         }}
         contentContainerStyle={styles.list}
@@ -488,6 +602,9 @@ export default function MealHistoryScreen() {
                 onPress={() => handleCardPress(row.meal)}
               />
             );
+          }
+          if (row.type === 'today-hypo' || row.type === 'past-hypo') {
+            return <HypoTreatmentCard treatment={row.data} onRefresh={silentRefresh} />;
           }
           // today-insulin or past-insulin
           return <InsulinLogCard log={row.data} onRefresh={silentRefresh} />;
@@ -583,4 +700,5 @@ const styles = StyleSheet.create({
   insulinUnits: { fontSize: 16, color: '#8E8E93' },
   insulinUnitsValue: { fontSize: 28, fontWeight: '700' },
   insulinStartGlucose: { fontSize: 13, color: '#636366' },
+  hypoNotes: { fontSize: 14, color: '#8E8E93', fontStyle: 'italic' },
 });

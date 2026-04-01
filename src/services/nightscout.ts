@@ -82,9 +82,9 @@ export async function fetchGlucosesSince(fromMs: number): Promise<GlucoseEntry[]
 }
 
 // Fetch all readings between two epoch-ms timestamps (up to 100 readings = ~8hrs)
-export async function fetchGlucoseRange(fromMs: number, toMs: number): Promise<CurvePoint[]> {
+export async function fetchGlucoseRange(fromMs: number, toMs: number, count = 100): Promise<CurvePoint[]> {
   const url =
-    `${NIGHTSCOUT_URL}?count=100&token=${TOKEN}` +
+    `${NIGHTSCOUT_URL}?count=${count}&token=${TOKEN}` +
     `&find[date][$gte]=${fromMs}&find[date][$lte]=${toMs}`;
 
   const response = await fetch(url);

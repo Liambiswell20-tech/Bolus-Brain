@@ -15,6 +15,7 @@ import type { MatchSummary } from '../services/matching';
 export interface GlucoseChartProps {
   response: GlucoseResponse;  // provides readings[], isPartial
   height?: number;            // defaults to 120
+  showTimeLabels?: boolean;   // when true, renders hour labels along x-axis from readings[].date
 }
 
 // ---- OutcomeBadge ----

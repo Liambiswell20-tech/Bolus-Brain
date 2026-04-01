@@ -8,6 +8,7 @@ const CHART_PADDING = 32; // 16px each side, matches card interior
 const Y_AXIS_WIDTH = 36;
 const PADDING_TOP = 8;
 const PADDING_BOTTOM = 8;
+const PADDING_BOTTOM_WITH_TIME = 22;
 const PADDING_RIGHT = 4;
 
 function segmentColor(mmol: number): string {
@@ -16,9 +17,19 @@ function segmentColor(mmol: number): string {
   return '#30D158';                   // in range — green
 }
 
-export function GlucoseChart({ response, height = 120 }: GlucoseChartProps) {
+function formatHour(epochMs: number): string {
+  const d = new Date(epochMs);
+  const h = d.getHours();
+  const m = d.getMinutes();
+  const suffix = h >= 12 ? 'pm' : 'am';
+  const h12 = h % 12 || 12;
+  return m === 0 ? `${h12}${suffix}` : `${h12}:${String(m).padStart(2, '0')}${suffix}`;
+}
+
+export function GlucoseChart({ response, height = 120, showTimeLabels = false }: GlucoseChartProps) {
+  const bottomPad = showTimeLabels ? PADDING_BOTTOM_WITH_TIME : PADDING_BOTTOM;
   const drawWidth = SCREEN_WIDTH - CHART_PADDING - Y_AXIS_WIDTH - PADDING_RIGHT;
-  const drawHeight = height - PADDING_TOP - PADDING_BOTTOM;
+  const drawHeight = height - PADDING_TOP - bottomPad;
   const totalSvgWidth = Y_AXIS_WIDTH + drawWidth + PADDING_RIGHT;
 
   const rawValues = response.readings.map(r => r.mmol);
@@ -109,6 +120,29 @@ export function GlucoseChart({ response, height = 120 }: GlucoseChartProps) {
               strokeLinejoin="round"
             />
           ))}
+          {/* X-axis time labels */}
+          {showTimeLabels && (() => {
+            const dates = response.readings.map(r => r.date);
+            const count = Math.min(5, rawValues.length);
+            const labelY = height - 4;
+            const labels: { x: number; text: string }[] = [];
+            for (let i = 0; i < count; i++) {
+              const idx = Math.round((i / (count - 1)) * (rawValues.length - 1));
+              labels.push({ x: toX(idx), text: formatHour(dates[idx]) });
+            }
+            return labels.map((l, i) => (
+              <SvgText
+                key={`t${i}`}
+                x={l.x}
+                y={labelY}
+                textAnchor="middle"
+                fontSize={9}
+                fill="#636366"
+              >
+                {l.text}
+              </SvgText>
+            ));
+          })()}
         </G>
       </Svg>
       {response.isPartial && (

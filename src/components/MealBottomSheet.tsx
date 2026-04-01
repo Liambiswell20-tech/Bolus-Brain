@@ -128,8 +128,18 @@ function SessionDetail({ session }: { session: SessionWithMeals }) {
             </View>
           </View>
 
-          {glucoseResponse.readings.length >= 2 && (
+          {glucoseResponse.readings.length >= 2 ? (
             <GlucoseChart response={glucoseResponse} height={140} />
+          ) : (
+            <View style={styles.noCurveBox}>
+              <Text style={styles.noCurveText}>Not enough readings yet</Text>
+              <Pressable style={styles.loadCurveBtn} onPress={handleLoadCurve} disabled={loadingCurve}>
+                {loadingCurve
+                  ? <ActivityIndicator size="small" color="#0A84FF" />
+                  : <Text style={styles.loadCurveBtnText}>Refresh curve</Text>
+                }
+              </Pressable>
+            </View>
           )}
         </>
       ) : (

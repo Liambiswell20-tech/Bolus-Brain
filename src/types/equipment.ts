@@ -17,7 +17,8 @@ export interface HypoTreatment {
   glucose_at_event: number;           // mmol/L from latest Nightscout reading
   treatment_type: string;             // Glucose tablets | Juice | Sweets | Gel | Other
   amount_value: number;
-  amount_unit: 'tablets' | 'ml' | 'g';
+  amount_unit: 'tablets' | 'ml' | 'g' | 'food';
+  notes?: string;                     // free-text: what they actually had (e.g. "banana", "Haribo")
   insulin_brand?: string;             // stamp from active equipment profile
   glucose_readings_after?: number[];  // up to 12 readings, partial arrays valid
 }

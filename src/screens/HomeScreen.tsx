@@ -18,8 +18,9 @@ import {
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Svg, { Path } from 'react-native-svg';
-import { fetchLatestGlucose, fetchGlucosesSince, GlucoseReading } from '../services/nightscout';
-import { fetchAndStoreCurve, saveMeal, loadGlucoseStore, updateGlucoseStore, loadCachedHba1c, computeAndCacheHba1c, Hba1cEstimate } from '../services/storage';
+import { fetchLatestGlucose, fetchGlucosesSince, fetchGlucoseRange, GlucoseReading, CurvePoint } from '../services/nightscout';
+import { fetchAndStoreCurve, saveMeal, loadGlucoseStore, updateGlucoseStore, loadCachedHba1c, computeAndCacheHba1c, Hba1cEstimate, GlucoseResponse, fetchAndStoreHypoRecoveryCurve } from '../services/storage';
+import { GlucoseChart } from '../components/GlucoseChart';
 import { glucoseToArcAngle } from '../utils/glucoseToArcAngle';
 import { COLORS, FONTS } from '../theme';
 import type { RootStackParamList } from '../../App';
@@ -62,6 +63,10 @@ export default function HomeScreen() {
 
   // HbA1c disclaimer modal
   const [hba1cModalVisible, setHba1cModalVisible] = useState(false);
+
+  // 12hr glucose curve modal
+  const [avg12hModalVisible, setAvg12hModalVisible] = useState(false);
+  const [last12hResponse, setLast12hResponse] = useState<GlucoseResponse | null>(null);
 
   // Hypo treatment sheet
   const [hypoSheetVisible, setHypoSheetVisible] = useState(false);
@@ -177,9 +182,50 @@ export default function HomeScreen() {
       };
       await AsyncStorage.setItem(HYPO_TREATMENTS_KEY, JSON.stringify([...existing, record]));
       setHypoSheetVisible(false);
+      // Background fetch recovery curve — won't have many readings yet but stores what exists
+      fetchAndStoreHypoRecoveryCurve(record.id).catch(() => {});
     } catch (err) {
       Alert.alert('Save failed', 'Could not save treatment. Try again.');
     }
+  }
+
+  async function handleAvg12hPress() {
+    // Fetch last 12 hours trailing from current time
+    const nowMs = Date.now();
+    const twelveHoursAgoMs = nowMs - 12 * 60 * 60 * 1000;
+    let curvePoints: CurvePoint[];
+    try {
+      curvePoints = await fetchGlucoseRange(twelveHoursAgoMs, nowMs, 150);
+    } catch {
+      // Fallback to local store if Nightscout fetch fails
+      const store = await loadGlucoseStore();
+      if (!store || store.readings.length === 0) return;
+      const recent = store.readings
+        .filter(r => r.date >= twelveHoursAgoMs)
+        .sort((a, b) => a.date - b.date);
+      if (recent.length === 0) return;
+      curvePoints = recent.map(r => ({
+        mmol: Math.round((r.sgv / 18) * 10) / 10,
+        date: r.date,
+      }));
+    }
+    if (curvePoints.length === 0) return;
+    const start = curvePoints[0].mmol;
+    const peak = Math.max(...curvePoints.map(p => p.mmol));
+    const end = curvePoints[curvePoints.length - 1].mmol;
+    setLast12hResponse({
+      startGlucose: start,
+      peakGlucose: peak,
+      timeToPeakMins: 0,
+      totalRise: 0,
+      endGlucose: end,
+      fallFromPeak: 0,
+      timeFromPeakToEndMins: 0,
+      readings: curvePoints,
+      isPartial: false,
+      fetchedAt: new Date().toISOString(),
+    });
+    setAvg12hModalVisible(true);
   }
 
   // Derive glucose arc angle and colour
@@ -263,7 +309,7 @@ export default function HomeScreen() {
             },
           ]}
         >
-          <View style={styles.statCard}>
+          <Pressable style={styles.statCard} onPress={avg12h !== null ? handleAvg12hPress : undefined}>
             <Text style={styles.statLabel}>12HR AVG</Text>
             {avg12h !== null ? (
               <Text style={[styles.statValue, { color: avg12h < 3.9 ? COLORS.red : avg12h > 10 ? COLORS.amber : COLORS.green }]}>
@@ -273,7 +319,8 @@ export default function HomeScreen() {
               <Text style={styles.statValue}>—</Text>
             )}
             <Text style={styles.statUnit}>mmol/L</Text>
-          </View>
+            {avg12h !== null && <Text style={styles.tapHint}>Tap for chart</Text>}
+          </Pressable>
 
           <Pressable style={styles.statCard} onPress={() => hba1c && setHba1cModalVisible(true)}>
             <Text style={styles.statLabel}>
@@ -458,6 +505,32 @@ export default function HomeScreen() {
               onPress={() => setHba1cModalVisible(false)}
             >
               <Text style={styles.hba1cModalCloseText}>OK</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
+
+      {/* 12hr glucose curve modal */}
+      <Modal
+        visible={avg12hModalVisible}
+        animationType="fade"
+        transparent
+        onRequestClose={() => setAvg12hModalVisible(false)}
+      >
+        <Pressable style={styles.modalBackdrop} onPress={() => setAvg12hModalVisible(false)} />
+        <View style={styles.hba1cModalWrapper}>
+          <View style={styles.hba1cModalSheet}>
+            <Text style={styles.hba1cModalTitle}>Last 12 hours</Text>
+            {last12hResponse && last12hResponse.readings.length >= 2 ? (
+              <GlucoseChart response={last12hResponse} height={180} showTimeLabels />
+            ) : (
+              <Text style={styles.hba1cModalBody}>Not enough readings to show a chart.</Text>
+            )}
+            <Pressable
+              style={styles.hba1cModalClose}
+              onPress={() => setAvg12hModalVisible(false)}
+            >
+              <Text style={styles.hba1cModalCloseText}>Close</Text>
             </Pressable>
           </View>
         </View>
