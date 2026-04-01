@@ -1,4 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { isSupabaseActive } from '../services/backend';
+import * as sbProvider from '../services/supabaseProvider';
 import type { EquipmentChangeEntry } from '../types/equipment';
 
 const EQUIPMENT_CHANGELOG_KEY = 'equipment_changelog';
@@ -19,6 +21,7 @@ async function saveChangelog(entries: EquipmentChangeEntry[]): Promise<void> {
 }
 
 export async function getActiveEquipment(field: string): Promise<EquipmentChangeEntry | null> {
+  if (isSupabaseActive()) return sbProvider.getActiveEquipment(field);
   const entries = await loadChangelog();
   return entries.find(e => e.field === field && !e.ended_at) ?? null;
 }
@@ -30,6 +33,7 @@ export async function getCurrentEquipmentProfile(): Promise<{
   cgmDevice: string;
   penNeedleBrand?: string;
 } | null> {
+  if (isSupabaseActive()) return sbProvider.getCurrentEquipmentProfile();
   const [rapid, longActing, delivery, cgm, pen] = await Promise.all([
     getActiveEquipment('rapid_insulin_brand'),
     getActiveEquipment('long_acting_insulin_brand'),
@@ -51,6 +55,7 @@ export async function getCurrentEquipmentProfile(): Promise<{
 }
 
 export async function getEquipmentAtTime(field: string, timestamp: string): Promise<EquipmentChangeEntry | null> {
+  if (isSupabaseActive()) return sbProvider.getEquipmentAtTime(field, timestamp);
   const entries = await loadChangelog();
   const ts = timestamp;
   return entries.find(e => {
@@ -62,6 +67,7 @@ export async function getEquipmentAtTime(field: string, timestamp: string): Prom
 }
 
 export async function changeEquipment(field: string, newValue: string, reason?: string): Promise<void> {
+  if (isSupabaseActive()) return sbProvider.changeEquipment(field, newValue, reason);
   const entries = await loadChangelog();
   // Single timestamp — CRITICAL invariant: ended_at === started_at on the new entry
   const now = new Date(Date.now()).toISOString();

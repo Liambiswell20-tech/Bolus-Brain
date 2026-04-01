@@ -1,4 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { isSupabaseActive } from './backend';
+import * as sbProvider from './supabaseProvider';
 
 const SETTINGS_KEY = 'glucolog_settings';
 
@@ -22,12 +24,14 @@ const DEFAULTS: AppSettings = {
 };
 
 export async function loadSettings(): Promise<AppSettings> {
+  if (isSupabaseActive()) return sbProvider.loadSettings();
   const raw = await AsyncStorage.getItem(SETTINGS_KEY);
   if (!raw) return { ...DEFAULTS };
   return { ...DEFAULTS, ...JSON.parse(raw) };
 }
 
 export async function saveSettings(updates: Partial<AppSettings>): Promise<AppSettings> {
+  if (isSupabaseActive()) return sbProvider.saveSettings(updates);
   const current = await loadSettings();
   const updated = { ...current, ...updates };
   await AsyncStorage.setItem(SETTINGS_KEY, JSON.stringify(updated));

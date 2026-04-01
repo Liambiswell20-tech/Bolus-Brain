@@ -11,13 +11,33 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { loadSettings, saveSettings } from '../services/settings';
+import { supabase } from '../services/supabase';
+import { refreshBackendState } from '../services/backend';
+import type { RootStackParamList } from '../../App';
 
 export default function AccountScreen() {
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [saving, setSaving] = useState(false);
+
+  async function handleSignOut() {
+    Alert.alert('Sign out', 'Are you sure you want to sign out?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Sign out',
+        style: 'destructive',
+        onPress: async () => {
+          await supabase.auth.signOut();
+          await refreshBackendState();
+          navigation.reset({ index: 0, routes: [{ name: 'Auth' }] });
+        },
+      },
+    ]);
+  }
 
   useFocusEffect(useCallback(() => {
     loadSettings().then(s => {
@@ -82,6 +102,10 @@ export default function AccountScreen() {
             : <Text style={styles.saveBtnText}>Save</Text>
           }
         </Pressable>
+
+        <Pressable style={styles.signOutBtn} onPress={handleSignOut}>
+          <Text style={styles.signOutBtnText}>Sign out</Text>
+        </Pressable>
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -109,4 +133,13 @@ const styles = StyleSheet.create({
   },
   saveBtnDisabled: { opacity: 0.5 },
   saveBtnText: { color: '#000', fontSize: 17, fontWeight: '700' },
+  signOutBtn: {
+    borderRadius: 14,
+    padding: 18,
+    alignItems: 'center',
+    marginTop: 20,
+    borderWidth: 1,
+    borderColor: '#FF3B30',
+  },
+  signOutBtnText: { color: '#FF3B30', fontSize: 17, fontWeight: '600' },
 });

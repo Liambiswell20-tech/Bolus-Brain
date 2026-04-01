@@ -1,5 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { CurvePoint, fetchGlucoseRange } from './nightscout';
+import { isSupabaseActive } from './backend';
+import * as sbProvider from './supabaseProvider';
 
 import type { HypoTreatment } from '../types/equipment';
 
@@ -46,6 +48,7 @@ export async function saveInsulinLog(
   startGlucose: number | null,
   loggedAt?: Date  // optional — defaults to new Date() if not provided
 ): Promise<InsulinLog> {
+  if (isSupabaseActive()) return sbProvider.saveInsulinLog(type, units, startGlucose, loggedAt);
   const existing = await loadInsulinLogs();
   const now = loggedAt ?? new Date();
   const log: InsulinLog = {
@@ -61,6 +64,7 @@ export async function saveInsulinLog(
 }
 
 export async function loadInsulinLogs(): Promise<InsulinLog[]> {
+  if (isSupabaseActive()) return sbProvider.loadInsulinLogs();
   try {
     const raw = await AsyncStorage.getItem(INSULIN_LOGS_KEY);
     if (!raw) return [];
@@ -73,6 +77,7 @@ export async function loadInsulinLogs(): Promise<InsulinLog[]> {
 
 // Fetches the 12hr glucose curve for a long-acting dose and stores it.
 export async function fetchAndStoreBasalCurve(logId: string): Promise<void> {
+  if (isSupabaseActive()) return sbProvider.fetchAndStoreBasalCurve(logId);
   const logs = await loadInsulinLogs();
   const log = logs.find(l => l.id === logId);
   if (!log || log.type !== 'long-acting') return;
@@ -118,6 +123,7 @@ export interface GlucoseStore {
 }
 
 export async function loadGlucoseStore(): Promise<GlucoseStore | null> {
+  if (isSupabaseActive()) return sbProvider.loadGlucoseStore();
   try {
     const raw = await AsyncStorage.getItem(GLUCOSE_STORE_KEY);
     if (!raw) return null;
@@ -133,6 +139,7 @@ export async function loadGlucoseStore(): Promise<GlucoseStore | null> {
 export async function updateGlucoseStore(
   newEntries: GlucosePoint[]
 ): Promise<{ avg12h: number | null; avg30d: number | null; daysOfData: number }> {
+  if (isSupabaseActive()) return sbProvider.updateGlucoseStore(newEntries);
   const existing = await loadGlucoseStore();
   const now = Date.now();
   const cutoff30d = now - THIRTY_DAYS_MS;
@@ -185,6 +192,7 @@ export interface Hba1cEstimate {
 }
 
 export async function loadCachedHba1c(): Promise<Hba1cEstimate | null> {
+  if (isSupabaseActive()) return sbProvider.loadCachedHba1c();
   try {
     const raw = await AsyncStorage.getItem(HBA1C_CACHE_KEY);
     if (!raw) return null;
@@ -201,6 +209,7 @@ export async function computeAndCacheHba1c(
   avgMmol: number,
   daysOfData: number
 ): Promise<Hba1cEstimate> {
+  if (isSupabaseActive()) return sbProvider.computeAndCacheHba1c(avgMmol, daysOfData);
   const percent = Math.round(((avgMmol + 2.59) / 1.59) * 10) / 10;
   const mmolMol = Math.round(10.929 * (avgMmol - 2.15));
   const estimate: Hba1cEstimate = {
@@ -297,6 +306,7 @@ function computeConfidence(mealCount: number): SessionConfidence {
 // --- public API ---
 
 export async function loadMeals(): Promise<Meal[]> {
+  if (isSupabaseActive()) return sbProvider.loadMeals();
   return loadMealsRaw();
 }
 
@@ -304,6 +314,7 @@ export async function updateMeal(
   id: string,
   changes: Partial<Pick<Meal, 'name' | 'photoUri' | 'insulinUnits' | 'loggedAt' | 'carbsEstimated'>>
 ): Promise<void> {
+  if (isSupabaseActive()) return sbProvider.updateMeal(id, changes);
   const meals = await loadMealsRaw();
   // If loggedAt is changing, the old curve is no longer valid — clear it
   const patch = 'loggedAt' in changes ? { ...changes, glucoseResponse: null } : changes;
@@ -315,17 +326,20 @@ export async function updateInsulinLog(
   id: string,
   changes: Partial<Pick<InsulinLog, 'units' | 'loggedAt'>>
 ): Promise<void> {
+  if (isSupabaseActive()) return sbProvider.updateInsulinLog(id, changes);
   const logs = await loadInsulinLogs();
   const updated = logs.map(l => (l.id === id ? { ...l, ...changes } : l));
   await AsyncStorage.setItem(INSULIN_LOGS_KEY, JSON.stringify(updated));
 }
 
 export async function deleteMeal(id: string): Promise<void> {
+  if (isSupabaseActive()) return sbProvider.deleteMeal(id);
   const meals = await loadMealsRaw();
   await saveMealsRaw(meals.filter(m => m.id !== id));
 }
 
 export async function deleteInsulinLog(id: string): Promise<void> {
+  if (isSupabaseActive()) return sbProvider.deleteInsulinLog(id);
   const logs = await loadInsulinLogs();
   await AsyncStorage.setItem(INSULIN_LOGS_KEY, JSON.stringify(logs.filter(l => l.id !== id)));
 }
@@ -334,6 +348,7 @@ export async function saveMeal(
   meal: Omit<Meal, 'id' | 'loggedAt' | 'glucoseResponse' | 'sessionId'>,
   loggedAt?: Date
 ): Promise<Meal> {
+  if (isSupabaseActive()) return sbProvider.saveMeal(meal, loggedAt);
   const [meals, sessions] = await Promise.all([loadMealsRaw(), loadSessionsRaw()]);
   const now = loggedAt ?? new Date();
 
@@ -425,6 +440,7 @@ export async function saveMeal(
 // Load sessions with their meals populated, newest-first.
 // Meals with no sessionId (pre-session data) are surfaced as synthetic solo sessions.
 export async function loadSessionsWithMeals(): Promise<SessionWithMeals[]> {
+  if (isSupabaseActive()) return sbProvider.loadSessionsWithMeals();
   const [meals, sessions] = await Promise.all([loadMealsRaw(), loadSessionsRaw()]);
   const mealMap = new Map(meals.map(m => [m.id, m]));
   const mealIdsInSessions = new Set(sessions.flatMap(s => s.mealIds));
@@ -488,6 +504,7 @@ function buildGlucoseResponse(
 // Fetch the 3hr glucose curve for a meal and store it on the meal object.
 // This is the primary curve fetch used by MealLogScreen and the history screen.
 export async function fetchAndStoreCurveForMeal(mealId: string): Promise<void> {
+  if (isSupabaseActive()) return sbProvider.fetchAndStoreCurveForMeal(mealId);
   const meals = await loadMealsRaw();
   const meal = meals.find(m => m.id === mealId);
   if (!meal) return;
@@ -512,6 +529,7 @@ export async function fetchAndStoreCurve(mealId: string): Promise<void> {
 
 // Fetch the curve directly by session ID (used by the history screen refresh button).
 export async function fetchAndStoreCurveForSession(sessionId: string): Promise<void> {
+  if (isSupabaseActive()) return sbProvider.fetchAndStoreCurveForSession(sessionId);
   const sessions = await loadSessionsRaw();
   await _fetchCurveForSession(sessionId, sessions);
 }
@@ -538,7 +556,25 @@ async function _fetchCurveForSession(sessionId: string, sessions: Session[]): Pr
 
 // --- hypo treatment helpers ---
 
+export async function saveHypoTreatment(
+  treatment: Omit<HypoTreatment, 'id' | 'logged_at' | 'glucose_readings_after'>
+): Promise<HypoTreatment> {
+  const record: HypoTreatment = {
+    id: crypto.randomUUID(),
+    logged_at: new Date().toISOString(),
+    ...treatment,
+  };
+  if (isSupabaseActive()) {
+    await sbProvider.saveHypoTreatment(record);
+    return record;
+  }
+  const existing = await loadHypoTreatments();
+  await AsyncStorage.setItem(HYPO_TREATMENTS_KEY, JSON.stringify([...existing, record]));
+  return record;
+}
+
 export async function loadHypoTreatments(): Promise<HypoTreatment[]> {
+  if (isSupabaseActive()) return sbProvider.loadHypoTreatments();
   try {
     const raw = await AsyncStorage.getItem(HYPO_TREATMENTS_KEY);
     if (!raw) return [];
@@ -553,17 +589,20 @@ export async function updateHypoTreatment(
   id: string,
   changes: Partial<Pick<HypoTreatment, 'treatment_type' | 'amount_value' | 'amount_unit' | 'notes' | 'logged_at'>>
 ): Promise<void> {
+  if (isSupabaseActive()) return sbProvider.updateHypoTreatment(id, changes);
   const treatments = await loadHypoTreatments();
   const updated = treatments.map(t => (t.id === id ? { ...t, ...changes } : t));
   await AsyncStorage.setItem(HYPO_TREATMENTS_KEY, JSON.stringify(updated));
 }
 
 export async function deleteHypoTreatment(id: string): Promise<void> {
+  if (isSupabaseActive()) return sbProvider.deleteHypoTreatment(id);
   const treatments = await loadHypoTreatments();
   await AsyncStorage.setItem(HYPO_TREATMENTS_KEY, JSON.stringify(treatments.filter(t => t.id !== id)));
 }
 
 export async function fetchAndStoreHypoRecoveryCurve(treatmentId: string): Promise<void> {
+  if (isSupabaseActive()) return sbProvider.fetchAndStoreHypoRecoveryCurve(treatmentId);
   const raw = await AsyncStorage.getItem(HYPO_TREATMENTS_KEY);
   const treatments: HypoTreatment[] = raw ? JSON.parse(raw) : [];
   const treatment = treatments.find(t => t.id === treatmentId);

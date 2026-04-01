@@ -1,4 +1,3 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useFonts, Outfit_400Regular, Outfit_600SemiBold } from '@expo-google-fonts/outfit';
@@ -10,7 +9,10 @@ import { View } from 'react-native';
 import { useAppForeground } from './src/hooks/useAppForeground';
 import { getDailyTIRHistory, calculateDailyTIR, storeDailyTIR } from './src/utils/timeInRange';
 import { fetchGlucoseRange } from './src/services/nightscout';
+import { refreshBackendState } from './src/services/backend';
+import { supabase } from './src/services/supabase';
 import EquipmentOnboardingScreen from './src/screens/EquipmentOnboardingScreen';
+import AuthScreen from './src/screens/AuthScreen';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import HomeScreen from './src/screens/HomeScreen';
 import MealLogScreen from './src/screens/MealLogScreen';
@@ -23,9 +25,11 @@ import SettingsScreen from './src/screens/SettingsScreen';
 import AccountScreen from './src/screens/AccountScreen';
 import HelpScreen from './src/screens/HelpScreen';
 import type { InsulinLogType } from './src/services/storage';
-import { migrateLegacySessions } from './src/services/storage';
+import { migrateLegacySessions, loadHypoTreatments, fetchAndStoreHypoRecoveryCurve } from './src/services/storage';
+import { getCurrentEquipmentProfile } from './src/utils/equipmentProfile';
 
 export type RootStackParamList = {
+  Auth: undefined;
   EquipmentOnboarding: undefined;
   Home: undefined;
   MealLog: undefined;
@@ -53,6 +57,25 @@ export default function App() {
 
   const [gateChecked, setGateChecked] = useState(false);
   const [needsOnboarding, setNeedsOnboarding] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+  // Auth + backend state check on startup
+  useEffect(() => {
+    (async () => {
+      await refreshBackendState();
+      const { data: { session } } = await supabase.auth.getSession();
+      setIsAuthenticated(!!session);
+    })();
+
+    // Listen for auth state changes (sign in / sign out)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (_event, session) => {
+        await refreshBackendState();
+        setIsAuthenticated(!!session);
+      }
+    );
+    return () => subscription.unsubscribe();
+  }, []);
 
   useEffect(() => {
     migrateLegacySessions().catch(err =>
@@ -62,11 +85,8 @@ export default function App() {
 
   // Equipment onboarding gate: show EquipmentOnboardingScreen on first launch
   useEffect(() => {
-    AsyncStorage.getItem('equipment_changelog')
-      .then(raw => {
-        const entries = raw ? JSON.parse(raw) : [];
-        setNeedsOnboarding(!Array.isArray(entries) || entries.length === 0);
-      })
+    getCurrentEquipmentProfile()
+      .then(profile => setNeedsOnboarding(profile === null))
       .catch(() => setNeedsOnboarding(true))
       .finally(() => setGateChecked(true));
   }, []);
@@ -112,25 +132,17 @@ export default function App() {
 
     // Hypo recovery curve fetch — for treatments where 60min window has elapsed
     try {
-      const HYPO_TREATMENTS_KEY = 'hypo_treatments';
-      const raw = await AsyncStorage.getItem(HYPO_TREATMENTS_KEY);
-      if (!raw) return;
-      const treatments: Array<{ id: string; logged_at: string; glucose_readings_after?: number[] }> = JSON.parse(raw);
+      const treatments = await loadHypoTreatments();
       const now = Date.now();
       const pending = treatments.filter(t =>
         t.glucose_readings_after === undefined &&
         now - new Date(t.logged_at).getTime() > 60 * 60 * 1000
       );
-      if (pending.length === 0) return;
       for (const treatment of pending) {
         try {
-          const startMs = new Date(treatment.logged_at).getTime();
-          const endMs = startMs + 60 * 60 * 1000;
-          const readings = await fetchGlucoseRange(startMs, endMs);
-          treatment.glucose_readings_after = readings.map(r => r.mmol);
+          await fetchAndStoreHypoRecoveryCurve(treatment.id);
         } catch {}
       }
-      await AsyncStorage.setItem(HYPO_TREATMENTS_KEY, JSON.stringify(treatments));
     } catch (err) {
       console.warn('[App] hypo recovery fetch failed (non-fatal)', err);
     }
@@ -150,7 +162,9 @@ export default function App() {
       <NavigationContainer>
         <StatusBar style="light" />
         <Stack.Navigator
-          initialRouteName={needsOnboarding ? 'EquipmentOnboarding' : 'Home'}
+          initialRouteName={
+            !isAuthenticated ? 'Auth' : needsOnboarding ? 'EquipmentOnboarding' : 'Home'
+          }
           screenOptions={{
             headerStyle: { backgroundColor: '#050706' },
             headerTintColor: '#fff',
@@ -158,6 +172,11 @@ export default function App() {
             contentStyle: { backgroundColor: '#050706' },
           }}
         >
+          <Stack.Screen
+            name="Auth"
+            component={AuthScreen}
+            options={{ headerShown: false, gestureEnabled: false }}
+          />
           <Stack.Screen
             name="EquipmentOnboarding"
             component={EquipmentOnboardingScreen}
