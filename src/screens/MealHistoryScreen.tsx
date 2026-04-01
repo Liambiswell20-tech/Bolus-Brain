@@ -33,9 +33,10 @@ import { DayGroupHeader } from '../components/DayGroupHeader';
 import { SessionSubHeader } from '../components/SessionSubHeader';
 import { getMealFingerprint } from '../utils/mealFingerprint';
 
-// Enable LayoutAnimation on Android
+// Enable LayoutAnimation on Android — wrapped in try/catch so it degrades
+// gracefully on New Architecture (Fabric) where this API may not exist.
 if (Platform.OS === 'android') {
-  UIManager.setLayoutAnimationEnabledExperimental?.(true);
+  try { UIManager.setLayoutAnimationEnabledExperimental?.(true); } catch {}
 }
 
 const TWELVE_HOURS_MS = 12 * 60 * 60 * 1000;
