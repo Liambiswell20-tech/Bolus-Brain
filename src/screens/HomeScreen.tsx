@@ -176,7 +176,7 @@ export default function HomeScreen() {
       const raw = await AsyncStorage.getItem(HYPO_TREATMENTS_KEY);
       const existing = raw ? JSON.parse(raw) : [];
       const record: HypoTreatment = {
-        id: Date.now().toString(),
+        id: crypto.randomUUID(),
         logged_at: new Date().toISOString(),
         ...treatment,
       };

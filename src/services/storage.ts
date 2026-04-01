@@ -49,7 +49,7 @@ export async function saveInsulinLog(
   const existing = await loadInsulinLogs();
   const now = loggedAt ?? new Date();
   const log: InsulinLog = {
-    id: Date.now().toString(),
+    id: crypto.randomUUID(),
     type,
     units,
     startGlucose,
@@ -339,7 +339,7 @@ export async function saveMeal(
 
   const newMeal: Meal = {
     ...meal,
-    id: now.getTime().toString(),
+    id: crypto.randomUUID(),
     loggedAt: now.toISOString(),
     glucoseResponse: null,
     sessionId: null,
