@@ -5,6 +5,7 @@ import {
   ActivityIndicator,
   Alert,
   Animated,
+  AppState,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -127,10 +128,24 @@ export default function HomeScreen() {
     }
   }, []);
 
+  // Poll only while app is in the foreground; re-fetch immediately on resume
   useEffect(() => {
     loadData();
-    const interval = setInterval(() => loadData(), POLL_INTERVAL_MS);
-    return () => clearInterval(interval);
+    let interval: ReturnType<typeof setInterval> | null = setInterval(() => loadData(), POLL_INTERVAL_MS);
+
+    const sub = AppState.addEventListener('change', (next) => {
+      if (next === 'active') {
+        loadData();
+        if (!interval) interval = setInterval(() => loadData(), POLL_INTERVAL_MS);
+      } else {
+        if (interval) { clearInterval(interval); interval = null; }
+      }
+    });
+
+    return () => {
+      if (interval) clearInterval(interval);
+      sub.remove();
+    };
   }, [loadData]);
 
   function openQuickLog() {
