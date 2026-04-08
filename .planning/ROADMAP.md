@@ -181,7 +181,7 @@ Plans:
 - [x] 09-01-PLAN.md — Types, storage helpers, dark theme, onboarding gate infrastructure, background standardisation
 - [x] 09-02-PLAN.md — DataSharingOnboardingScreen + AboutMeOnboardingScreen + App.tsx wiring
 - [x] 09-03-PLAN.md — Hypo treatment rework (free text, optional brand/amount) + Help FAQ copy update
-- [ ] 09-04-PLAN.md — Multi-tablet dosing in SettingsScreen
+- [x] 09-04-PLAN.md — Multi-tablet dosing in SettingsScreen
 - [x] 09-05-PLAN.md — History two-tab layout with long-acting insulin tab and 12hr glucose curves
 - [x] 09-06-PLAN.md — KeyboardAvoidingView standardisation across all form screens
 - [ ] 09-07-PLAN.md — Full test suite + human verification checkpoint (all BETA-01 through BETA-07)
