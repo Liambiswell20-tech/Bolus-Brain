@@ -14,6 +14,7 @@ Milestone 2 transforms BolusBrain from a data-collection app into an intelligent
 - [ ] **Phase 6: Route to Market** - Complete landing page, email capture, and MHRA regulatory contact
 - [x] **Phase 8: B2B Data Capture Layer** - Equipment onboarding gate, equipment changelog, meal stamping, hypo treatment quick log, TIR calculation, and data consent — positioning the dataset for acquisition (completed 2026-03-31)
 - [ ] **Phase 9: Pre-Beta Polish** - Onboarding rework (data sharing + about me screens), hypo treatment rework, tablet dosing, history tabs with long-acting view, help copy update, keyboard and navigation bug fixes
+- [ ] **Phase 10: Supabase Migration & Multi-User Backend** - Migrate from AsyncStorage to Supabase (auth, PostgreSQL, encrypted storage), server-side rate limiting, AI consent flow, multi-user data isolation
 
 ## Phase Details
 
@@ -135,6 +136,7 @@ Phases 1 -> 2 -> 3 -> 4 -> 5 execute in numeric order.
 | 6. Route to Market | 0/3 | Planned | - |
 | 8. B2B Data Capture Layer | 8/8 | Complete   | 2026-03-31 |
 | 9. Pre-Beta Polish | 0/7 | Planned | - |
+| 10. Supabase Migration & Multi-User Backend | 0/TBD | Not started | - |
 
 ### Phase 7: Premium features and monetization strategy
 
@@ -145,6 +147,21 @@ Phases 1 -> 2 -> 3 -> 4 -> 5 execute in numeric order.
 
 Plans:
 - [ ] TBD (run /gsd:plan-phase 7 to break down)
+
+### Phase 10: Supabase Migration & Multi-User Backend
+**Goal**: The app moves from local-only AsyncStorage to Supabase as the backend — with auth (email/password + biometric), encrypted health data storage, server-side rate limiting on the carb estimate proxy, AI consent flow, multi-user data isolation, and data migration from AsyncStorage to cloud — enabling multiple beta users to use the app independently
+**Depends on**: Phase 9 (pre-beta polish must be complete before backend migration)
+**Requirements**: TBD
+**Success Criteria** (what must be TRUE):
+  1. Users can sign up and sign in with email/password — biometric unlock (Face ID / fingerprint) available after first login
+  2. All health data (glucose, meals, insulin, HbA1c) stored in Supabase PostgreSQL with row-level security — each user sees only their own data
+  3. Health data encrypted at rest (GDPR Article 9 special category data compliance)
+  4. Server-side rate limiting on `/api/carb-estimate` proxy (IP-based sliding window, 10 req/day) — client-side bypass eliminated
+  5. AI consent modal shown before first carb estimate: "Your photo is sent to Anthropic's Claude API for carb estimation and is not stored by them" — one-tap accept, persisted
+  6. Existing AsyncStorage data migrated to Supabase on first login — migration is idempotent and preserves all historical meals, insulin logs, equipment profiles, and consent records
+  7. Data sharing toggle enforced server-side — when user turns off, their data is excluded from any aggregation queries
+  8. HelpScreen copy updated to accurately reflect that photos pass through Anthropic's servers for carb estimation
+**Plans**: TBD
 
 ### Phase 9: Pre-Beta Polish
 **Goal**: The onboarding flow captures data sharing consent and demographic profile before equipment, hypo treatment supports free-text with optional brand/amount, tablet dosing is configurable in settings, history has a long-acting insulin tab with 12-hour glucose curves, help copy reflects anonymised data sharing, and keyboard/navigation bugs are fixed — the app is ready for external beta testers
