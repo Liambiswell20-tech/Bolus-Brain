@@ -23,6 +23,8 @@ export default function HypoTreatmentSheet({
   onSave,
 }: HypoTreatmentSheetProps) {
   const [treatmentType, setTreatmentType] = useState<string>('Glucose tablets');
+  const [customType, setCustomType] = useState('');
+  const [brand, setBrand] = useState('');
   const [amountValue, setAmountValue] = useState('');
   const [amountUnit, setAmountUnit] = useState<'tablets' | 'ml' | 'g' | 'food'>('tablets');
   const [notes, setNotes] = useState('');
@@ -30,27 +32,33 @@ export default function HypoTreatmentSheet({
   function handleClose() {
     // Reset state on close
     setTreatmentType('Glucose tablets');
+    setCustomType('');
+    setBrand('');
     setAmountValue('');
     setAmountUnit('tablets');
     setNotes('');
     onClose();
   }
 
-  const parsedAmount = parseFloat(amountValue);
-  const saveDisabled = amountValue.trim() === '' || isNaN(parsedAmount);
+  const effectiveType = customType.trim() || treatmentType;
+  const saveDisabled = !effectiveType;
 
   function handleSave() {
-    if (saveDisabled) return;
+    if (!effectiveType) return;
+    const parsedAmount = parseFloat(amountValue);
     const trimmedNotes = notes.trim();
+    const trimmedBrand = brand.trim();
     onSave({
       glucose_at_event: currentGlucose ?? 0,
-      treatment_type: treatmentType,
-      amount_value: parsedAmount,
-      amount_unit: amountUnit,
+      treatment_type: effectiveType,
+      ...(trimmedBrand ? { brand: trimmedBrand } : {}),
+      ...(amountValue.trim() && !isNaN(parsedAmount) ? { amount_value: parsedAmount, amount_unit: amountUnit } : {}),
       ...(trimmedNotes ? { notes: trimmedNotes } : {}),
     });
-    // Reset state after save
+    // Reset all state
     setTreatmentType('Glucose tablets');
+    setCustomType('');
+    setBrand('');
     setAmountValue('');
     setAmountUnit('tablets');
     setNotes('');
@@ -90,40 +98,56 @@ export default function HypoTreatmentSheet({
             </View>
           </View>
 
-          {/* 2. Treatment type picker */}
+          {/* 2. Treatment type picker + free text */}
           <View style={styles.section}>
             <Text style={styles.fieldLabel}>TREATMENT TYPE</Text>
             <View style={styles.chipRow}>
               {TREATMENT_TYPES.map(type => (
                 <Pressable
                   key={type}
-                  style={[styles.chip, treatmentType === type && styles.chipActive]}
-                  onPress={() => setTreatmentType(type)}
+                  style={[styles.chip, treatmentType === type && !customType.trim() && styles.chipActive]}
+                  onPress={() => {
+                    setCustomType('');
+                    setTreatmentType(type);
+                  }}
                 >
-                  <Text style={[styles.chipText, treatmentType === type && styles.chipTextActive]}>
+                  <Text style={[styles.chipText, treatmentType === type && !customType.trim() && styles.chipTextActive]}>
                     {type}
                   </Text>
                 </Pressable>
               ))}
             </View>
-          </View>
-
-          {/* 3. What did you have? — optional free text */}
-          <View style={styles.section}>
-            <Text style={styles.fieldLabel}>WHAT DID YOU HAVE?</Text>
             <TextInput
-              style={styles.notesInput}
-              placeholder="e.g. banana, orange juice, Haribo..."
+              style={styles.freeTextInput}
+              placeholder="Or type what you had..."
               placeholderTextColor={COLORS.textMuted}
-              value={notes}
-              onChangeText={setNotes}
+              value={customType}
+              onChangeText={(text) => {
+                setCustomType(text);
+                if (text.trim()) setTreatmentType('');  // deselect preset when typing
+              }}
               returnKeyType="next"
             />
           </View>
 
-          {/* 4. Amount row — value input + unit picker chips */}
+          {/* 3. Brand (optional) — only when preset is selected */}
+          {treatmentType !== '' && (
+            <View style={styles.section}>
+              <Text style={styles.fieldLabel}>BRAND (OPTIONAL)</Text>
+              <TextInput
+                style={styles.freeTextInput}
+                placeholder="e.g. Lucozade, Dextro Energy..."
+                placeholderTextColor={COLORS.textMuted}
+                value={brand}
+                onChangeText={setBrand}
+                returnKeyType="next"
+              />
+            </View>
+          )}
+
+          {/* 4. Amount row — optional, value input + unit picker chips */}
           <View style={styles.section}>
-            <Text style={styles.fieldLabel}>AMOUNT</Text>
+            <Text style={styles.fieldLabel}>AMOUNT (OPTIONAL)</Text>
             <View style={styles.amountRow}>
               <TextInput
                 style={styles.amountInput}
@@ -150,7 +174,20 @@ export default function HypoTreatmentSheet({
             </View>
           </View>
 
-          {/* 4. Save / Cancel buttons */}
+          {/* 5. What did you have? — optional free text notes */}
+          <View style={styles.section}>
+            <Text style={styles.fieldLabel}>NOTES</Text>
+            <TextInput
+              style={styles.notesInput}
+              placeholder="Any other details..."
+              placeholderTextColor={COLORS.textMuted}
+              value={notes}
+              onChangeText={setNotes}
+              returnKeyType="done"
+            />
+          </View>
+
+          {/* 6. Save / Cancel buttons */}
           <View style={styles.buttonRow}>
             <Pressable style={styles.cancelBtn} onPress={handleClose}>
               <Text style={styles.cancelBtnText}>Cancel</Text>
@@ -224,6 +261,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8,
+    marginBottom: 10,
   },
   chip: {
     paddingHorizontal: 12,
@@ -250,6 +288,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
+  },
+  freeTextInput: {
+    backgroundColor: COLORS.surfaceRaised,
+    color: COLORS.text,
+    fontSize: 15,
+    padding: 14,
+    borderRadius: 12,
+    fontFamily: FONTS.regular,
   },
   notesInput: {
     backgroundColor: COLORS.surfaceRaised,

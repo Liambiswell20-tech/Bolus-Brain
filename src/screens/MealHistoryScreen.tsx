@@ -289,12 +289,17 @@ function HypoTreatmentCard({ treatment, onRefresh }: { treatment: HypoTreatment;
 
       <View style={styles.insulinSummaryRow}>
         <Text style={styles.insulinUnits}>
-          {treatment.treatment_type} — {treatment.amount_value} {treatment.amount_unit}
+          {treatment.treatment_type}
+          {treatment.amount_value != null ? ` — ${treatment.amount_value} ${treatment.amount_unit ?? ''}` : ''}
         </Text>
         <Text style={styles.insulinStartGlucose}>
           {treatment.glucose_at_event.toFixed(1)} mmol/L
         </Text>
       </View>
+
+      {treatment.brand ? (
+        <Text style={styles.hypoNotes}>{treatment.brand}</Text>
+      ) : null}
 
       {treatment.notes ? (
         <Text style={styles.hypoNotes}>{treatment.notes}</Text>
