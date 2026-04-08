@@ -24,22 +24,22 @@
 - [x] **HIST-01**: User can tap any history card to expand it and see full glucose stats, trend graph, and session context
 - [x] **HIST-02**: History screen groups entries into day folders (e.g. "Wednesday 18 Mar") that are collapsed by default and expand on tap
 - [x] **HIST-03**: Every meal history card displays an outcome badge with 4 states based on completed `GlucoseResponse`:
-  - **Green**: `peakGlucose ≤ 10.0` AND `endGlucose` 3.9–10.0 (stayed in range)
-  - **Orange**: `peakGlucose > 10.0` AND `endGlucose` 3.9–10.0 (went high, returned to range)
+  - **Green**: `peakGlucose <= 10.0` AND `endGlucose` 3.9-10.0 (stayed in range)
+  - **Orange**: `peakGlucose > 10.0` AND `endGlucose` 3.9-10.0 (went high, returned to range)
   - **Dark Amber**: `endGlucose > 10.0` AND `endGlucose < 14.0` (stayed elevated but not extreme)
-  - **Red**: `endGlucose < 3.9` (hypo) OR `endGlucose ≥ 14.0` OR `peakGlucose ≥ 14.0` (extreme high)
-  - **Pending**: `isPartial = true` (curve not yet complete — no classification)
+  - **Red**: `endGlucose < 3.9` (hypo) OR `endGlucose >= 14.0` OR `peakGlucose >= 14.0` (extreme high)
+  - **Pending**: `isPartial = true` (curve not yet complete -- no classification)
   - **None**: no `glucoseResponse` (never fetched)
-- [x] **HIST-04**: User can edit a previously logged insulin dose to correct a mistake — corrected value persists in storage
+- [x] **HIST-04**: User can edit a previously logged insulin dose to correct a mistake -- corrected value persists in storage
 - [x] **HIST-05**: User can tap "Late Entry" when logging a meal or insulin dose, select an earlier time that day, and have the glucose curve fetched from that earlier time rather than the current time
-- [x] **HIST-06**: All legacy meals (pre-session data, no sessionId) are migrated to proper session records on first launch after Phase 2 ships — migration is idempotent, runs once, and is logged
+- [x] **HIST-06**: All legacy meals (pre-session data, no sessionId) are migrated to proper session records on first launch after Phase 2 ships -- migration is idempotent, runs once, and is logged
 
 ### Pattern Intelligence
 
-- [x] **PATT-01**: When viewing an expanded history card or logging a new meal, user sees a "You've eaten this before" section showing up to 5 matching past sessions — displayed as "Last time: [meal name], [units] units, [outcome badge]" with no advice or recommendation
-- [x] **PATT-02**: Meals where glucose stayed in range (Green outcome) are marked as successful — when a matching meal appears in "You've eaten this before", the successful flag is surfaced ("This went well last time")
-- [ ] **PATT-03**: AI carb estimation tracks whether each estimate agreed with the actual outcome (glucose stayed in range vs went high/low) — a confidence score per meal is stored and updated after the curve completes; if the estimate was wrong last time and the user went low, a warning is shown before the next estimate for the same meal
-- [ ] **PATT-04**: Long-acting insulin logs capture a bedtime reading (target 10pm) and a morning reading (target 7am next day) as the overnight window — these are displayed on the insulin log card to show basal effectiveness
+- [x] **PATT-01**: When viewing an expanded history card or logging a new meal, user sees a "You've eaten this before" section showing up to 5 matching past sessions -- displayed as "Last time: [meal name], [units] units, [outcome badge]" with no advice or recommendation
+- [x] **PATT-02**: Meals where glucose stayed in range (Green outcome) are marked as successful -- when a matching meal appears in "You've eaten this before", the successful flag is surfaced ("This went well last time")
+- [ ] **PATT-03**: AI carb estimation tracks whether each estimate agreed with the actual outcome (glucose stayed in range vs went high/low) -- a confidence score per meal is stored and updated after the curve completes; if the estimate was wrong last time and the user went low, a warning is shown before the next estimate for the same meal
+- [ ] **PATT-04**: Long-acting insulin logs capture a bedtime reading (target 10pm) and a morning reading (target 7am next day) as the overnight window -- these are displayed on the insulin log card to show basal effectiveness
 
 ### HomeScreen
 
@@ -51,27 +51,37 @@
 
 - [ ] **MKTG-01**: Landing page finalised with AI carb estimation photo demo section and Dexcom integration as next-steps teaser
 - [ ] **MKTG-02**: Email capture form on landing page captures pre-interest signups and stores them
-- [x] **LEGAL-01**: MHRA informal guidance email sent to devices@mhra.gov.uk with app description and "no advice, only historical patterns" framing — **sent 2026-03-18**. Response pending (may take weeks). No reply required to proceed with development.
+- [x] **LEGAL-01**: MHRA informal guidance email sent to devices@mhra.gov.uk with app description and "no advice, only historical patterns" framing -- **sent 2026-03-18**. Response pending (may take weeks). No reply required to proceed with development.
 
 ### B2B Data Capture Layer
 
-- [x] **B2B-01**: Mandatory equipment onboarding gate — full-screen shown on first launch (and every fresh install / storage clear), hard gate before HomeScreen. Four mandatory pickers: rapid insulin brand, long-acting insulin brand (with "I don't take long-acting insulin" opt-out → stores null), delivery method, CGM device. One optional picker: pen needle brand (shown only when delivery method is a pen type). No skip path. Gate passes only when all four mandatory fields have been answered.
-- [x] **B2B-02**: Equipment changelog data model — `src/types/equipment.ts` defines EquipmentChangeEntry, HypoTreatment, DailyTIR, DataConsent interfaces. `src/utils/equipmentProfile.ts` implements: `getActiveEquipment(field)`, `getCurrentEquipmentProfile()`, `getEquipmentAtTime(field, timestamp)`, `changeEquipment(field, newValue, reason?)`. `changeEquipment` closes the previous entry (sets ended_at) and opens a new one (sets started_at) using a single shared timestamp so ended_at === started_at on closing entry.
-- [x] **B2B-03**: Equipment change confirmation modal — `EquipmentChangeConfirmation` modal shown in Settings before any equipment field change is committed. User must confirm before `changeEquipment()` is called.
-- [x] **B2B-04**: Equipment settings section — "My Equipment" section in SettingsScreen displaying all active equipment fields with edit capability (triggers B2B-03 confirmation modal on each change).
-- [x] **B2B-05**: Meal stamping — at meal save time in MealLogScreen, `getCurrentEquipmentProfile()` is called once and `rapidInsulinBrand` → `insulin_brand` and `deliveryMethod` → `delivery_method` are stamped immutably onto the meal record. A read-only insulin brand chip is shown after the units input in MealLogScreen. `Meal` interface in storage.ts extended with optional `insulin_brand` and `delivery_method` fields.
-- [x] **B2B-06**: Hypo treatment quick log — optional "Treating a low?" button on HomeScreen (below AveragedStatsPanel, above Log Meal / Quick Log buttons; red/amber colour token; always visible, not conditional on glucose level). Tap opens HypoTreatmentSheet: (1) current glucose read-only, (2) treatment type picker (Glucose tablets / Juice / Sweets / Gel / Other), (3) amount_value numeric + amount_unit picker (tablets / ml / g) inline, (4) Save / Cancel. Recovery curve fetched on next app foreground after 60-min window closes (up to 12 readings; partial arrays valid). Not via background job.
-- [x] **B2B-07**: TIR calculation — `src/utils/timeInRange.ts` implements `calculateDailyTIR()`. Triggered once per calendar day on app foreground. Calculates TIR for yesterday using all available Nightscout readings. Stores DailyTIR record under `daily_tir` key in AsyncStorage if no record exists for that date (never overwrites). Prunes store to 90 days on each write. No UI display this phase.
-- [x] **B2B-08**: Data consent toggle — "Data & Research" section in SettingsScreen. Toggle OFF by default. Stores `DataConsent` with `consented`, `consented_at`, and `version` fields. On app launch: if stored version !== CURRENT_CONSENT_VERSION, show re-consent modal and reset consented to false.
+- [x] **B2B-01**: Mandatory equipment onboarding gate -- full-screen shown on first launch (and every fresh install / storage clear), hard gate before HomeScreen. Four mandatory pickers: rapid insulin brand, long-acting insulin brand (with "I don't take long-acting insulin" opt-out -> stores null), delivery method, CGM device. One optional picker: pen needle brand (shown only when delivery method is a pen type). No skip path. Gate passes only when all four mandatory fields have been answered.
+- [x] **B2B-02**: Equipment changelog data model -- `src/types/equipment.ts` defines EquipmentChangeEntry, HypoTreatment, DailyTIR, DataConsent interfaces. `src/utils/equipmentProfile.ts` implements: `getActiveEquipment(field)`, `getCurrentEquipmentProfile()`, `getEquipmentAtTime(field, timestamp)`, `changeEquipment(field, newValue, reason?)`. `changeEquipment` closes the previous entry (sets ended_at) and opens a new one (sets started_at) using a single shared timestamp so ended_at === started_at on closing entry.
+- [x] **B2B-03**: Equipment change confirmation modal -- `EquipmentChangeConfirmation` modal shown in Settings before any equipment field change is committed. User must confirm before `changeEquipment()` is called.
+- [x] **B2B-04**: Equipment settings section -- "My Equipment" section in SettingsScreen displaying all active equipment fields with edit capability (triggers B2B-03 confirmation modal on each change).
+- [x] **B2B-05**: Meal stamping -- at meal save time in MealLogScreen, `getCurrentEquipmentProfile()` is called once and `rapidInsulinBrand` -> `insulin_brand` and `deliveryMethod` -> `delivery_method` are stamped immutably onto the meal record. A read-only insulin brand chip is shown after the units input in MealLogScreen. `Meal` interface in storage.ts extended with optional `insulin_brand` and `delivery_method` fields.
+- [x] **B2B-06**: Hypo treatment quick log -- optional "Treating a low?" button on HomeScreen (below AveragedStatsPanel, above Log Meal / Quick Log buttons; red/amber colour token; always visible, not conditional on glucose level). Tap opens HypoTreatmentSheet: (1) current glucose read-only, (2) treatment type picker (Glucose tablets / Juice / Sweets / Gel / Other), (3) amount_value numeric + amount_unit picker (tablets / ml / g) inline, (4) Save / Cancel. Recovery curve fetched on next app foreground after 60-min window closes (up to 12 readings; partial arrays valid). Not via background job.
+- [x] **B2B-07**: TIR calculation -- `src/utils/timeInRange.ts` implements `calculateDailyTIR()`. Triggered once per calendar day on app foreground. Calculates TIR for yesterday using all available Nightscout readings. Stores DailyTIR record under `daily_tir` key in AsyncStorage if no record exists for that date (never overwrites). Prunes store to 90 days on each write. No UI display this phase.
+- [x] **B2B-08**: Data consent toggle -- "Data & Research" section in SettingsScreen. Toggle OFF by default. Stores `DataConsent` with `consented`, `consented_at`, and `version` fields. On app launch: if stored version !== CURRENT_CONSENT_VERSION, show re-consent modal and reset consented to false.
+
+### Pre-Beta Polish
+
+- [ ] **BETA-01**: On first launch, user sees 3 onboarding screens in order: Data Sharing opt-in -> About Me demographics -> Equipment (existing). All existing users see Data Sharing and About Me on next launch (gate checks all three flags). Each screen uses `navigation.replace()` to prevent back-navigation.
+- [ ] **BETA-02**: About Me screen captures age range (mandatory, 7 options), gender (mandatory, 4 options), T1D duration (optional, 5 options), HbA1c mmol/mol (optional, free number input). Stored as `UserProfile` in AsyncStorage under `user_profile` key.
+- [ ] **BETA-03**: Hypo treatment rework -- presets shown as chip suggestions with free-text input for custom treatment type. Optional brand free-text input shown after selection. Amount value and amount unit are OPTIONAL (not required to save). Single item save. Backward-compatible with existing HypoTreatment records.
+- [ ] **BETA-04**: Tablet dosing section in Settings under Dosing area. Support multiple tablets (name, mg, amount per day on same row). Stored as `TabletDosing[]` in AsyncStorage under `tablet_dosing` key. Migrates legacy single `tabletName`/`tabletDose` from AppSettings on first load.
+- [ ] **BETA-05**: History page has two tabs: Tab 1 (Meals) shows existing view unchanged. Tab 2 (Long-acting) shows list of long-acting insulin doses with 12-hour glucose curves (using existing GlucoseChart), dose units, and highlighted morning reading.
+- [ ] **BETA-06**: Help & FAQ data sharing section updated to say data is fully anonymised and used to help improve diabetes care.
+- [ ] **BETA-07**: Keyboard no longer obscures save buttons across all screens (standardised KeyboardAvoidingView). No white flash on home navigation transitions (NavigationContainer custom dark theme + consistent background colours).
 
 ## v2 Requirements
 
-### Pattern Intelligence (deferred — needs data volume)
+### Pattern Intelligence (deferred -- needs data volume)
 
-- **PATT-V2-01**: Pattern reports and trend summaries — available only after 90+ days of data; not before
-- **PATT-V2-02**: Meal outcome trends over time — "This meal has gone well 4 out of 5 times"
+- **PATT-V2-01**: Pattern reports and trend summaries -- available only after 90+ days of data; not before
+- **PATT-V2-02**: Meal outcome trends over time -- "This meal has gone well 4 out of 5 times"
 
-### Infrastructure (deferred — needs backend)
+### Infrastructure (deferred -- needs backend)
 
 - **INFRA-V2-01**: Cloud backup and data export for device loss protection
 - **INFRA-V2-02**: Backend (Node.js + PostgreSQL) with AsyncStorage as cache layer
@@ -85,13 +95,13 @@
 
 | Feature | Reason |
 |---------|--------|
-| Insulin dosing advice or recommendations | Legal/regulatory — crosses into SaMD territory; all framing must be historical only |
+| Insulin dosing advice or recommendations | Legal/regulatory -- crosses into SaMD territory; all framing must be historical only |
 | Prediction engine | Deferred until 50+ meals logged AND 90+ days of data; requires MHRA guidance + potentially regulatory solicitor |
-| "You should take X units" language anywhere | Non-negotiable legal constraint — replaced by "last time you ate this, you took X units" |
+| "You should take X units" language anywhere | Non-negotiable legal constraint -- replaced by "last time you ate this, you took X units" |
 | Suggestions before 90 days of data | Statistically meaningless and potentially misleading for T1D management |
-| Multi-user support | Requires backend + auth — v2 milestone |
+| Multi-user support | Requires backend + auth -- v2 milestone |
 | Social or sharing features | Out of scope for personal app v1 |
-| Carb database lookup | UK CoFID AI estimation is the approach — no USDA lookup, no pre-built database |
+| Carb database lookup | UK CoFID AI estimation is the approach -- no USDA lookup, no pre-built database |
 | Gamification | Inappropriate for medical context |
 
 ## Traceability
@@ -121,7 +131,7 @@
 | PATT-04 | Phase 5 | Pending |
 | MKTG-01 | Phase 6 | Pending |
 | MKTG-02 | Phase 6 | Pending |
-| LEGAL-01 | Phase 6 | Complete — sent 2026-03-18, awaiting response |
+| LEGAL-01 | Phase 6 | Complete -- sent 2026-03-18, awaiting response |
 | B2B-01 | Phase 8 | Complete |
 | B2B-02 | Phase 8 | Complete |
 | B2B-03 | Phase 8 | Complete |
@@ -130,12 +140,19 @@
 | B2B-06 | Phase 8 | Complete |
 | B2B-07 | Phase 8 | Complete |
 | B2B-08 | Phase 8 | Complete |
+| BETA-01 | Phase 9 | Pending |
+| BETA-02 | Phase 9 | Pending |
+| BETA-03 | Phase 9 | Pending |
+| BETA-04 | Phase 9 | Pending |
+| BETA-05 | Phase 9 | Pending |
+| BETA-06 | Phase 9 | Pending |
+| BETA-07 | Phase 9 | Pending |
 
 **Coverage:**
-- v1 requirements: 27 total
-- Mapped to phases: 27
-- Unmapped: 0 ✓
+- v1 requirements: 34 total
+- Mapped to phases: 34
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-18*
-*Last updated: 2026-03-31 — B2B data capture requirements (B2B-01 through B2B-08) added, mapped to Phase 8*
+*Last updated: 2026-04-08 -- Pre-Beta Polish requirements (BETA-01 through BETA-07) added, mapped to Phase 9*

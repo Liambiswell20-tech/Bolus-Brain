@@ -45,7 +45,7 @@ Plans:
 **Success Criteria** (what must be TRUE):
   1. History screen loads and displays entries grouped under day headers (e.g. "Wednesday 18 Mar") that collapse and expand on tap
   2. Tapping any history card expands it to reveal full glucose stats and a curve graph — tapping again collapses it
-  3. Every history card shows an outcome badge: Green (stayed 3.9–10.0), Orange (went above 10, returned to range), Dark Amber (stayed above 10 but below 14), Red (below 3.9 or ≥14.0), Pending (curve incomplete), or None (no curve)
+  3. Every history card shows an outcome badge: Green (stayed 3.9-10.0), Orange (went above 10, returned to range), Dark Amber (stayed above 10 but below 14), Red (below 3.9 or >=14.0), Pending (curve incomplete), or None (no curve)
   4. User can tap "Late Entry" when logging a meal and select an earlier time — the glucose curve is fetched from that earlier time rather than now
   5. All legacy meals (pre-session data) are migrated to proper session records on first launch after this phase ships — migration is idempotent and runs only once
 **Plans**: 6 plans
@@ -72,14 +72,14 @@ Plans:
 - [x] 03-01-PLAN.md — Wave 0: Create matching.test.ts covering findSimilarSessions contract (null return, exclusion rules, MAX_MATCHES cap)
 - [x] 03-02-PLAN.md — Wave 2: Extract glucoseColor util, widen MatchingSlotProps type, build MatchingSlot in ExpandableCard, wire allSessions through MealHistoryScreen
 - [x] 03-03-PLAN.md — Wave 3: Add debounced live matching and insulin hint to MealLogScreen
-- [ ] 03-04-PLAN.md — Wave 4: Human verification checkpoint (Tests A–F)
+- [ ] 03-04-PLAN.md — Wave 4: Human verification checkpoint (Tests A-F)
 
 ### Phase 4: Session Grouping, Pattern Recall & HomeScreen Redesign
 **Goal**: The HomeScreen is redesigned with an arc gauge displaying current glucose, pattern recall is surfaced via a bottom sheet from history cards and averaged stats in meal log, and the HbA1c estimate is shown with an appropriate disclaimer — completing the user's ability to understand their glucose story at a glance
 **Depends on**: Phase 1 (sum fix must be verified before disclaimer draws attention to HbA1c), Phase 2 (GlucoseChart component must exist)
 **Requirements**: HOME-01, HOME-02, HOME-03, HIST-04
 **Success Criteria** (what must be TRUE):
-  1. HomeScreen displays current glucose as an arc gauge spanning 2.0–20.0 mmol/L across a 270-degree sweep, using JetBrains Mono for the glucose value and a pulsing LIVE indicator — null/loading state renders "– –" in the gauge centre
+  1. HomeScreen displays current glucose as an arc gauge spanning 2.0-20.0 mmol/L across a 270-degree sweep, using JetBrains Mono for the glucose value and a pulsing LIVE indicator — null/loading state renders "- -" in the gauge centre
   2. Tapping a history card opens a bottom sheet showing up to 10 past matching sessions as tabs — each tab renders a GlucoseChart for that session; the sheet is silent (does not open) if 0 past sessions exist
   3. The meal log screen shows averaged stats (avgRise, avgPeak, avgTimeToPeak) above live match rows when 2 or more matching past sessions exist
   4. Tapping the estimated HbA1c value shows a modal that reads: "Please be aware HbA1c is usually calculated over 90 days. You should get accurate testing and take guidance from your diabetes team."
@@ -123,7 +123,7 @@ Plans:
 
 **Execution Order:**
 Phase 6 (Route to Market) is INDEPENDENT — start immediately, in parallel with Phase 1. The MHRA email (LEGAL-01) should be sent before any code ships to establish the regulatory paper trail.
-Phases 1 → 2 → 3 → 4 → 5 execute in numeric order.
+Phases 1 -> 2 -> 3 -> 4 -> 5 execute in numeric order.
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
@@ -134,7 +134,7 @@ Phases 1 → 2 → 3 → 4 → 5 execute in numeric order.
 | 5. Data Model Extensions and Editing | 0/TBD | Not started | - |
 | 6. Route to Market | 0/3 | Planned | - |
 | 8. B2B Data Capture Layer | 8/8 | Complete   | 2026-03-31 |
-| 9. Pre-Beta Polish | 0/TBD | Not started | - |
+| 9. Pre-Beta Polish | 0/7 | Planned | - |
 
 ### Phase 7: Premium features and monetization strategy
 
@@ -149,16 +149,25 @@ Plans:
 ### Phase 9: Pre-Beta Polish
 **Goal**: The onboarding flow captures data sharing consent and demographic profile before equipment, hypo treatment supports free-text with optional brand/amount, tablet dosing is configurable in settings, history has a long-acting insulin tab with 12-hour glucose curves, help copy reflects anonymised data sharing, and keyboard/navigation bugs are fixed — the app is ready for external beta testers
 **Depends on**: Phase 8 (B2B data capture layer must be complete)
-**Requirements**: TBD
+**Requirements**: BETA-01, BETA-02, BETA-03, BETA-04, BETA-05, BETA-06, BETA-07
 **Success Criteria** (what must be TRUE):
-  1. On first launch, user sees 3 onboarding screens in order: Data Sharing opt-in → About Me demographics → Equipment (existing)
+  1. On first launch, user sees 3 onboarding screens in order: Data Sharing opt-in -> About Me demographics -> Equipment (existing)
   2. About Me captures age range, gender (mandatory) and T1D duration, HbA1c (optional) — stored in AsyncStorage
   3. Hypo treatment shows preset suggestions with open text, optional brand free-text, optional amount — single item save
   4. Settings has a Tablet Dosing section where user can add multiple tablets (name, mg, amount per day)
   5. History page has two tabs: Meals + rapid insulin (existing) and Long-acting insulin (dose list with 12-hour glucose curves)
   6. Help & FAQ data sharing section mentions fully anonymised data used to improve diabetes care
   7. Keyboard no longer obscures save buttons; no white flash on home navigation
-**Plans**: TBD
+**Plans**: 7 plans
+
+Plans:
+- [ ] 09-01-PLAN.md — Types, storage helpers, dark theme, onboarding gate infrastructure, background standardisation
+- [ ] 09-02-PLAN.md — DataSharingOnboardingScreen + AboutMeOnboardingScreen + App.tsx wiring
+- [ ] 09-03-PLAN.md — Hypo treatment rework (free text, optional brand/amount) + Help FAQ copy update
+- [ ] 09-04-PLAN.md — Multi-tablet dosing in SettingsScreen
+- [ ] 09-05-PLAN.md — History two-tab layout with long-acting insulin tab and 12hr glucose curves
+- [ ] 09-06-PLAN.md — KeyboardAvoidingView standardisation across all form screens
+- [ ] 09-07-PLAN.md — Full test suite + human verification checkpoint (all BETA-01 through BETA-07)
 
 ### Phase 8: B2B Data Capture Layer
 
