@@ -17,9 +17,10 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import Svg, { Path } from 'react-native-svg';
 import { fetchLatestGlucose, fetchGlucosesSince, fetchGlucoseRange, GlucoseReading, CurvePoint } from '../services/nightscout';
-import { fetchAndStoreCurve, saveMeal, loadGlucoseStore, updateGlucoseStore, loadCachedHba1c, computeAndCacheHba1c, Hba1cEstimate, GlucoseResponse, fetchAndStoreHypoRecoveryCurve, saveHypoTreatment } from '../services/storage';
+import { fetchAndStoreCurve, saveMeal, loadGlucoseStore, updateGlucoseStore, loadCachedHba1c, computeAndCacheHba1c, Hba1cEstimate, GlucoseResponse, fetchAndStoreHypoRecoveryCurve } from '../services/storage';
 import { GlucoseChart } from '../components/GlucoseChart';
 import { glucoseToArcAngle } from '../utils/glucoseToArcAngle';
 import { COLORS, FONTS } from '../theme';
@@ -186,7 +187,15 @@ export default function HomeScreen() {
 
   async function handleHypoSave(treatment: Omit<HypoTreatment, 'id' | 'logged_at' | 'glucose_readings_after'>) {
     try {
-      const record = await saveHypoTreatment(treatment);
+      const HYPO_TREATMENTS_KEY = 'hypo_treatments';
+      const raw = await AsyncStorage.getItem(HYPO_TREATMENTS_KEY);
+      const existing = raw ? JSON.parse(raw) : [];
+      const record: HypoTreatment = {
+        id: crypto.randomUUID(),
+        logged_at: new Date().toISOString(),
+        ...treatment,
+      };
+      await AsyncStorage.setItem(HYPO_TREATMENTS_KEY, JSON.stringify([...existing, record]));
       setHypoSheetVisible(false);
       // Background fetch recovery curve — won't have many readings yet but stores what exists
       fetchAndStoreHypoRecoveryCurve(record.id).catch(() => {});

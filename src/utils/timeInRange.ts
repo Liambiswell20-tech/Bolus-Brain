@@ -1,6 +1,4 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { isSupabaseActive } from '../services/backend';
-import * as sbProvider from '../services/supabaseProvider';
 import type { DailyTIR } from '../types/equipment';
 
 const DAILY_TIR_KEY = 'daily_tir';
@@ -35,7 +33,6 @@ export function calculateDailyTIR(readings: number[], date?: string): DailyTIR {
 }
 
 export async function getDailyTIRHistory(): Promise<DailyTIR[]> {
-  if (isSupabaseActive()) return sbProvider.getDailyTIRHistory();
   try {
     const raw = await AsyncStorage.getItem(DAILY_TIR_KEY);
     if (!raw) return [];
@@ -48,7 +45,6 @@ export async function getDailyTIRHistory(): Promise<DailyTIR[]> {
 }
 
 export async function storeDailyTIR(record: DailyTIR): Promise<void> {
-  if (isSupabaseActive()) return sbProvider.storeDailyTIR(record);
   const existing = await getDailyTIRHistory();
   // Never overwrite an existing record for the same date
   if (existing.some(r => r.date === record.date)) return;

@@ -19,8 +19,6 @@ Full project brief: `C:\Users\Liamb\OneDrive\Desktop\Bolus Brain Project\CLAUDE.
 - `EXPO_PUBLIC_NIGHTSCOUT_URL` — Nightscout API endpoint
 - `EXPO_PUBLIC_NIGHTSCOUT_TOKEN` — Nightscout access token
 - `EXPO_PUBLIC_ANTHROPIC_API_KEY` — Claude API key for carb estimation
-- `EXPO_PUBLIC_SUPABASE_URL` — Supabase project URL
-- `EXPO_PUBLIC_SUPABASE_ANON_KEY` — Supabase anon (public) key
 
 ---
 
