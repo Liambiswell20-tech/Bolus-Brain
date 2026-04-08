@@ -32,6 +32,7 @@ import { GlucoseChart } from '../components/GlucoseChart';
 import { DayGroupHeader } from '../components/DayGroupHeader';
 import { SessionSubHeader } from '../components/SessionSubHeader';
 import { getMealFingerprint } from '../utils/mealFingerprint';
+import { COLORS, FONTS } from '../theme';
 
 // Enable LayoutAnimation on Android — wrapped in try/catch so it degrades
 // gracefully on New Architecture (Fabric) where this API may not exist.
@@ -317,6 +318,233 @@ function HypoTreatmentCard({ treatment, onRefresh }: { treatment: HypoTreatment;
   );
 }
 
+// --- tab bar ---
+
+function HistoryTabBar({ activeTab, onTabChange }: { activeTab: 0 | 1; onTabChange: (tab: 0 | 1) => void }) {
+  return (
+    <View style={tabStyles.container}>
+      <Pressable
+        style={[tabStyles.tab, activeTab === 0 && tabStyles.activeTab]}
+        onPress={() => onTabChange(0)}
+      >
+        <Text style={[tabStyles.tabText, activeTab === 0 && tabStyles.activeTabText]}>
+          Meals
+        </Text>
+      </Pressable>
+      <Pressable
+        style={[tabStyles.tab, activeTab === 1 && tabStyles.activeTab]}
+        onPress={() => onTabChange(1)}
+      >
+        <Text style={[tabStyles.tabText, activeTab === 1 && tabStyles.activeTabText]}>
+          Long-acting
+        </Text>
+      </Pressable>
+    </View>
+  );
+}
+
+const tabStyles = StyleSheet.create({
+  container: {
+    flexDirection: 'row',
+    backgroundColor: COLORS.background,
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    gap: 0,
+  },
+  tab: {
+    flex: 1,
+    paddingVertical: 12,
+    alignItems: 'center',
+    borderBottomWidth: 2,
+    borderBottomColor: 'transparent',
+  },
+  activeTab: {
+    borderBottomColor: COLORS.green,
+  },
+  tabText: {
+    fontSize: 15,
+    color: COLORS.textMuted,
+    fontFamily: FONTS.regular,
+  },
+  activeTabText: {
+    color: COLORS.text,
+    fontFamily: FONTS.semiBold,
+  },
+});
+
+// --- long-acting card ---
+
+function LongActingCard({ log, onRefresh }: { log: InsulinLog; onRefresh: () => void }) {
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const [fetching, setFetching] = useState(false);
+  const complete = basalWindowComplete(log.loggedAt);
+  const minsLeft = minsUntilBasalReady(log.loggedAt);
+
+  // Convert BasalCurve to GlucoseResponse shape for GlucoseChart
+  const chartResponse: GlucoseResponse | null = log.basalCurve ? {
+    startGlucose: log.basalCurve.startGlucose,
+    peakGlucose: Math.max(...log.basalCurve.readings.map(r => r.mmol)),
+    timeToPeakMins: 0,
+    totalRise: 0,
+    endGlucose: log.basalCurve.endGlucose,
+    fallFromPeak: 0,
+    timeFromPeakToEndMins: 0,
+    readings: log.basalCurve.readings,
+    isPartial: log.basalCurve.isPartial,
+    fetchedAt: log.basalCurve.fetchedAt,
+  } : null;
+
+  // Find morning reading — closest to 7am the day after injection
+  const morningReading = useMemo(() => {
+    if (!log.basalCurve || log.basalCurve.readings.length === 0) return null;
+    const injectionDate = new Date(log.loggedAt);
+    const nextDay7am = new Date(injectionDate);
+    nextDay7am.setDate(nextDay7am.getDate() + 1);
+    nextDay7am.setHours(7, 0, 0, 0);
+    const target7amMs = nextDay7am.getTime();
+    let closest = log.basalCurve.readings[0];
+    let closestDiff = Math.abs(closest.date - target7amMs);
+    for (const r of log.basalCurve.readings) {
+      const diff = Math.abs(r.date - target7amMs);
+      if (diff < closestDiff) {
+        closest = r;
+        closestDiff = diff;
+      }
+    }
+    // Only show if within 2 hours of 7am
+    return closestDiff <= 2 * 60 * 60 * 1000 ? closest : null;
+  }, [log.basalCurve, log.loggedAt]);
+
+  async function handleFetchCurve() {
+    setFetching(true);
+    try {
+      await fetchAndStoreBasalCurve(log.id);
+      onRefresh();
+    } finally {
+      setFetching(false);
+    }
+  }
+
+  return (
+    <View style={[styles.card, styles.insulinCard]}>
+      <View style={styles.cardHeader}>
+        <Text style={styles.cardDate}>{formatDate(log.loggedAt)}</Text>
+        <View style={[styles.badge, { backgroundColor: '#3A0A0A' }]}>
+          <Text style={[styles.badgeText, { color: '#FF3B30' }]}>Long-acting</Text>
+        </View>
+        <Pressable
+          style={styles.editBtn}
+          onPress={() => navigation.navigate('EditInsulin', { logId: log.id })}
+          hitSlop={8}
+        >
+          <Text style={styles.editBtnText}>Edit</Text>
+        </Pressable>
+      </View>
+
+      <View style={styles.insulinSummaryRow}>
+        <Text style={styles.insulinUnits}>
+          <Text style={[styles.insulinUnitsValue, { color: '#FF3B30' }]}>{log.units}</Text>
+          {' '}units
+        </Text>
+        {log.startGlucose !== null && (
+          <Text style={styles.insulinStartGlucose}>
+            Glucose: {log.startGlucose.toFixed(1)} mmol/L
+          </Text>
+        )}
+      </View>
+
+      {chartResponse ? (
+        <>
+          <GlucoseChart response={chartResponse} height={160} showTimeLabels />
+          {log.basalCurve && <BasalCurveCard curve={log.basalCurve} />}
+          {morningReading && (
+            <View style={longActingStyles.morningRow}>
+              <Text style={longActingStyles.morningLabel}>Morning reading</Text>
+              <Text style={[longActingStyles.morningValue, {
+                color: morningReading.mmol < 3.9 ? COLORS.red : morningReading.mmol > 10.0 ? COLORS.amber : COLORS.green
+              }]}>
+                {morningReading.mmol.toFixed(1)} mmol/L
+              </Text>
+            </View>
+          )}
+          {log.basalCurve?.isPartial && complete && (
+            <Pressable style={styles.refreshBtn} onPress={handleFetchCurve} disabled={fetching}>
+              {fetching
+                ? <ActivityIndicator size="small" color="#FF3B30" />
+                : <Text style={[styles.refreshBtnText, { color: '#FF3B30' }]}>Refresh 12hr curve</Text>
+              }
+            </Pressable>
+          )}
+        </>
+      ) : complete ? (
+        <Pressable style={[styles.fetchBtn, { backgroundColor: '#FF3B30' }]} onPress={handleFetchCurve} disabled={fetching}>
+          {fetching
+            ? <ActivityIndicator size="small" color="#fff" />
+            : <Text style={[styles.fetchBtnText, { color: '#fff' }]}>Load overnight curve</Text>
+          }
+        </Pressable>
+      ) : (
+        <View style={styles.pendingRow}>
+          <Text style={styles.pendingText}>
+            12hr curve ready in ~{minsLeft > 60 ? `${Math.ceil(minsLeft / 60)}h` : `${minsLeft}min`}
+          </Text>
+        </View>
+      )}
+    </View>
+  );
+}
+
+const longActingStyles = StyleSheet.create({
+  morningRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: COLORS.surfaceRaised,
+    borderRadius: 10,
+    padding: 12,
+    marginTop: 4,
+  },
+  morningLabel: {
+    fontSize: 13,
+    color: COLORS.textSecondary,
+    fontFamily: FONTS.regular,
+  },
+  morningValue: {
+    fontSize: 17,
+    fontFamily: FONTS.mono,
+    fontWeight: '700',
+  },
+});
+
+// --- long-acting tab ---
+
+function LongActingTab({ insulinLogs, onRefresh }: { insulinLogs: InsulinLog[]; onRefresh: () => void }) {
+  const longActingLogs = useMemo(
+    () => insulinLogs.filter(l => l.type === 'long-acting').sort((a, b) => new Date(b.loggedAt).getTime() - new Date(a.loggedAt).getTime()),
+    [insulinLogs]
+  );
+
+  if (longActingLogs.length === 0) {
+    return (
+      <View style={styles.center}>
+        <Text style={styles.emptyText}>No long-acting insulin logged</Text>
+        <Text style={styles.emptyHint}>Log a long-acting dose from the home screen</Text>
+      </View>
+    );
+  }
+
+  return (
+    <FlatList
+      data={longActingLogs}
+      keyExtractor={log => `la_${log.id}`}
+      contentContainerStyle={styles.list}
+      renderItem={({ item: log }) => (
+        <LongActingCard log={log} onRefresh={onRefresh} />
+      )}
+    />
+  );
+}
+
 // --- screen ---
 
 type ListRow =
@@ -331,6 +559,7 @@ type ListRow =
   | { type: 'past-hypo';       data: HypoTreatment; dateKey: string };
 
 export default function MealHistoryScreen() {
+  const [activeTab, setActiveTab] = useState<0 | 1>(0);
   const [sessions, setSessions] = useState<SessionWithMeals[]>([]);
   const [insulinLogs, setInsulinLogs] = useState<InsulinLog[]>([]);
   const [hypoTreatments, setHypoTreatments] = useState<HypoTreatment[]>([]);
@@ -555,62 +784,68 @@ export default function MealHistoryScreen() {
 
   return (
     <>
-      <FlatList
-        data={listData}
-        keyExtractor={row => {
-          if (row.type === 'day-header') return `header_${row.dateKey}`;
-          if (row.type === 'today-meal') return `today_meal_${row.meal.id}`;
-          if (row.type === 'today-session') return `today_session_${row.session.id}`;
-          if (row.type === 'today-insulin') return `today_insulin_${row.data.id}`;
-          if (row.type === 'today-hypo') return `today_hypo_${row.data.id}`;
-          if (row.type === 'session-subhdr') return `subhdr_${row.dateKey}_${row.session.id}`;
-          if (row.type === 'past-meal') return `past_meal_${row.dateKey}_${row.meal.id}`;
-          if (row.type === 'past-hypo') return `past_hypo_${row.dateKey}_${row.data.id}`;
-          return `past_insulin_${row.dateKey}_${row.data.id}`;
-        }}
-        contentContainerStyle={styles.list}
-        renderItem={({ item: row }) => {
-          if (row.type === 'day-header') {
-            return (
-              <DayGroupHeader
-                label={row.label}
-                count={row.count}
-                expanded={row.expanded}
-                onToggle={() => toggleDay(row.dateKey)}
-              />
-            );
-          }
-          if (row.type === 'session-subhdr') {
-            return (
-              <SessionSubHeader
-                mealCount={row.session.meals.length}
-                startedAt={row.session.startedAt}
-              />
-            );
-          }
-          if (row.type === 'today-session') {
-            return (
-              <SessionSubHeader
-                mealCount={row.session.meals.length}
-                startedAt={row.session.startedAt}
-              />
-            );
-          }
-          if (row.type === 'today-meal' || row.type === 'past-meal') {
-            return (
-              <MealHistoryCard
-                meal={row.meal}
-                onPress={() => handleCardPress(row.meal)}
-              />
-            );
-          }
-          if (row.type === 'today-hypo' || row.type === 'past-hypo') {
-            return <HypoTreatmentCard treatment={row.data} onRefresh={silentRefresh} />;
-          }
-          // today-insulin or past-insulin
-          return <InsulinLogCard log={row.data} onRefresh={silentRefresh} />;
-        }}
-      />
+      <HistoryTabBar activeTab={activeTab} onTabChange={setActiveTab} />
+      <View style={{ flex: 1, display: activeTab === 0 ? 'flex' : 'none' }}>
+        <FlatList
+          data={listData}
+          keyExtractor={row => {
+            if (row.type === 'day-header') return `header_${row.dateKey}`;
+            if (row.type === 'today-meal') return `today_meal_${row.meal.id}`;
+            if (row.type === 'today-session') return `today_session_${row.session.id}`;
+            if (row.type === 'today-insulin') return `today_insulin_${row.data.id}`;
+            if (row.type === 'today-hypo') return `today_hypo_${row.data.id}`;
+            if (row.type === 'session-subhdr') return `subhdr_${row.dateKey}_${row.session.id}`;
+            if (row.type === 'past-meal') return `past_meal_${row.dateKey}_${row.meal.id}`;
+            if (row.type === 'past-hypo') return `past_hypo_${row.dateKey}_${row.data.id}`;
+            return `past_insulin_${row.dateKey}_${row.data.id}`;
+          }}
+          contentContainerStyle={styles.list}
+          renderItem={({ item: row }) => {
+            if (row.type === 'day-header') {
+              return (
+                <DayGroupHeader
+                  label={row.label}
+                  count={row.count}
+                  expanded={row.expanded}
+                  onToggle={() => toggleDay(row.dateKey)}
+                />
+              );
+            }
+            if (row.type === 'session-subhdr') {
+              return (
+                <SessionSubHeader
+                  mealCount={row.session.meals.length}
+                  startedAt={row.session.startedAt}
+                />
+              );
+            }
+            if (row.type === 'today-session') {
+              return (
+                <SessionSubHeader
+                  mealCount={row.session.meals.length}
+                  startedAt={row.session.startedAt}
+                />
+              );
+            }
+            if (row.type === 'today-meal' || row.type === 'past-meal') {
+              return (
+                <MealHistoryCard
+                  meal={row.meal}
+                  onPress={() => handleCardPress(row.meal)}
+                />
+              );
+            }
+            if (row.type === 'today-hypo' || row.type === 'past-hypo') {
+              return <HypoTreatmentCard treatment={row.data} onRefresh={silentRefresh} />;
+            }
+            // today-insulin or past-insulin
+            return <InsulinLogCard log={row.data} onRefresh={silentRefresh} />;
+          }}
+        />
+      </View>
+      <View style={{ flex: 1, display: activeTab === 1 ? 'flex' : 'none' }}>
+        <LongActingTab insulinLogs={insulinLogs} onRefresh={silentRefresh} />
+      </View>
       <MealBottomSheet
         sessions={sheetSessions}
         visible={sheetVisible}
