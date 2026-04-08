@@ -13,6 +13,7 @@ Milestone 2 transforms BolusBrain from a data-collection app into an intelligent
 - [ ] **Phase 5: Data Model Extensions and Editing** - Add AI confidence tracking, long-acting overnight window, and dose editing
 - [ ] **Phase 6: Route to Market** - Complete landing page, email capture, and MHRA regulatory contact
 - [x] **Phase 8: B2B Data Capture Layer** - Equipment onboarding gate, equipment changelog, meal stamping, hypo treatment quick log, TIR calculation, and data consent — positioning the dataset for acquisition (completed 2026-03-31)
+- [ ] **Phase 9: Pre-Beta Polish** - Onboarding rework (data sharing + about me screens), hypo treatment rework, tablet dosing, history tabs with long-acting view, help copy update, keyboard and navigation bug fixes
 
 ## Phase Details
 
@@ -133,6 +134,7 @@ Phases 1 → 2 → 3 → 4 → 5 execute in numeric order.
 | 5. Data Model Extensions and Editing | 0/TBD | Not started | - |
 | 6. Route to Market | 0/3 | Planned | - |
 | 8. B2B Data Capture Layer | 8/8 | Complete   | 2026-03-31 |
+| 9. Pre-Beta Polish | 0/TBD | Not started | - |
 
 ### Phase 7: Premium features and monetization strategy
 
@@ -143,6 +145,20 @@ Phases 1 → 2 → 3 → 4 → 5 execute in numeric order.
 
 Plans:
 - [ ] TBD (run /gsd:plan-phase 7 to break down)
+
+### Phase 9: Pre-Beta Polish
+**Goal**: The onboarding flow captures data sharing consent and demographic profile before equipment, hypo treatment supports free-text with optional brand/amount, tablet dosing is configurable in settings, history has a long-acting insulin tab with 12-hour glucose curves, help copy reflects anonymised data sharing, and keyboard/navigation bugs are fixed — the app is ready for external beta testers
+**Depends on**: Phase 8 (B2B data capture layer must be complete)
+**Requirements**: TBD
+**Success Criteria** (what must be TRUE):
+  1. On first launch, user sees 3 onboarding screens in order: Data Sharing opt-in → About Me demographics → Equipment (existing)
+  2. About Me captures age range, gender (mandatory) and T1D duration, HbA1c (optional) — stored in AsyncStorage
+  3. Hypo treatment shows preset suggestions with open text, optional brand free-text, optional amount — single item save
+  4. Settings has a Tablet Dosing section where user can add multiple tablets (name, mg, amount per day)
+  5. History page has two tabs: Meals + rapid insulin (existing) and Long-acting insulin (dose list with 12-hour glucose curves)
+  6. Help & FAQ data sharing section mentions fully anonymised data used to improve diabetes care
+  7. Keyboard no longer obscures save buttons; no white flash on home navigation
+**Plans**: TBD
 
 ### Phase 8: B2B Data Capture Layer
 
