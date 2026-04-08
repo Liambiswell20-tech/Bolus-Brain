@@ -259,7 +259,7 @@ export default function SettingsScreen() {
   return (
     <>
       <KeyboardAvoidingView
-        style={{ flex: 1, backgroundColor: '#000' }}
+        style={{ flex: 1, backgroundColor: COLORS.background }}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <ScrollView contentContainerStyle={styles.container}>
@@ -441,7 +441,7 @@ export default function SettingsScreen() {
 }
 
 const styles = StyleSheet.create({
-  center: { flex: 1, backgroundColor: '#000', alignItems: 'center', justifyContent: 'center' },
+  center: { flex: 1, backgroundColor: COLORS.background, alignItems: 'center', justifyContent: 'center' },
   container: { padding: 20, paddingBottom: 48 },
   sectionHeader: {
     fontSize: 13,

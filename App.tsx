@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { NavigationContainer } from '@react-navigation/native';
+import { DefaultTheme, NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useFonts, Outfit_400Regular, Outfit_600SemiBold } from '@expo-google-fonts/outfit';
 import { JetBrainsMono_400Regular } from '@expo-google-fonts/jetbrains-mono';
@@ -22,10 +22,13 @@ import EditHypoScreen from './src/screens/EditHypoScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
 import AccountScreen from './src/screens/AccountScreen';
 import HelpScreen from './src/screens/HelpScreen';
+import { COLORS } from './src/theme';
 import type { InsulinLogType } from './src/services/storage';
-import { migrateLegacySessions } from './src/services/storage';
+import { migrateLegacySessions, migrateTabletDosing } from './src/services/storage';
 
 export type RootStackParamList = {
+  DataSharingOnboarding: undefined;
+  AboutMeOnboarding: undefined;
   EquipmentOnboarding: undefined;
   Home: undefined;
   MealLog: undefined;
@@ -41,6 +44,28 @@ export type RootStackParamList = {
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
+const BolusBrainDarkTheme = {
+  dark: true as const,
+  colors: {
+    ...DefaultTheme.colors,
+    background: COLORS.background,
+    card: COLORS.background,
+    text: COLORS.text,
+    border: COLORS.separator,
+    primary: COLORS.green,
+    notification: COLORS.red,
+  },
+  fonts: DefaultTheme.fonts,
+};
+
+// Temporary placeholders — replaced by Plan 09-02
+function DataSharingOnboardingPlaceholder() {
+  return <View style={{ flex: 1, backgroundColor: COLORS.background }} />;
+}
+function AboutMeOnboardingPlaceholder() {
+  return <View style={{ flex: 1, backgroundColor: COLORS.background }} />;
+}
+
 // Keep splash screen visible while fonts load
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
@@ -52,23 +77,45 @@ export default function App() {
   });
 
   const [gateChecked, setGateChecked] = useState(false);
-  const [needsOnboarding, setNeedsOnboarding] = useState(false);
+  const [initialRoute, setInitialRoute] = useState<keyof RootStackParamList>('Home');
 
   useEffect(() => {
     migrateLegacySessions().catch(err =>
       console.warn('[App] migration error:', err)
     );
+    migrateTabletDosing().catch(err =>
+      console.warn('[App] tablet migration error:', err)
+    );
   }, []);
 
-  // Equipment onboarding gate: show EquipmentOnboardingScreen on first launch
+  // Multi-step onboarding gate: data sharing → about me → equipment
   useEffect(() => {
-    AsyncStorage.getItem('equipment_changelog')
-      .then(raw => {
-        const entries = raw ? JSON.parse(raw) : [];
-        setNeedsOnboarding(!Array.isArray(entries) || entries.length === 0);
-      })
-      .catch(() => setNeedsOnboarding(true))
-      .finally(() => setGateChecked(true));
+    async function checkOnboarding() {
+      try {
+        const dsCompleted = await AsyncStorage.getItem('data_sharing_onboarding_completed');
+        if (dsCompleted !== 'true') {
+          setInitialRoute('DataSharingOnboarding');
+          return;
+        }
+        const amCompleted = await AsyncStorage.getItem('about_me_completed');
+        if (amCompleted !== 'true') {
+          setInitialRoute('AboutMeOnboarding');
+          return;
+        }
+        const equipRaw = await AsyncStorage.getItem('equipment_changelog');
+        const entries = equipRaw ? JSON.parse(equipRaw) : [];
+        if (!Array.isArray(entries) || entries.length === 0) {
+          setInitialRoute('EquipmentOnboarding');
+          return;
+        }
+        setInitialRoute('Home');
+      } catch {
+        setInitialRoute('DataSharingOnboarding');
+      } finally {
+        setGateChecked(true);
+      }
+    }
+    checkOnboarding();
   }, []);
 
   // Release splash when fonts ready OR after error
@@ -147,10 +194,10 @@ export default function App() {
 
   return (
     <SafeAreaProvider>
-      <NavigationContainer>
+      <NavigationContainer theme={BolusBrainDarkTheme}>
         <StatusBar style="light" />
         <Stack.Navigator
-          initialRouteName={needsOnboarding ? 'EquipmentOnboarding' : 'Home'}
+          initialRouteName={initialRoute}
           screenOptions={{
             headerStyle: { backgroundColor: '#050706' },
             headerTintColor: '#fff',
@@ -158,6 +205,16 @@ export default function App() {
             contentStyle: { backgroundColor: '#050706' },
           }}
         >
+          <Stack.Screen
+            name="DataSharingOnboarding"
+            component={DataSharingOnboardingPlaceholder}
+            options={{ headerShown: false, gestureEnabled: false }}
+          />
+          <Stack.Screen
+            name="AboutMeOnboarding"
+            component={AboutMeOnboardingPlaceholder}
+            options={{ headerShown: false, gestureEnabled: false }}
+          />
           <Stack.Screen
             name="EquipmentOnboarding"
             component={EquipmentOnboardingScreen}

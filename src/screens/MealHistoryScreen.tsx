@@ -858,7 +858,7 @@ export default function MealHistoryScreen() {
 const styles = StyleSheet.create({
   center: {
     flex: 1,
-    backgroundColor: '#000',
+    backgroundColor: COLORS.background,
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
