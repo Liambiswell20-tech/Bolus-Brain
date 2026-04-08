@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: unknown
-stopped_at: Completed 08-08-PLAN.md task 1; awaiting human verification checkpoint
-last_updated: "2026-03-31T17:25:33.758Z"
+stopped_at: Completed 09-05-PLAN.md
+last_updated: "2026-04-08T21:08:56.214Z"
 progress:
-  total_phases: 8
+  total_phases: 10
   completed_phases: 4
-  total_plans: 32
-  completed_plans: 28
+  total_plans: 39
+  completed_plans: 29
 ---
 
 # Project State
@@ -19,12 +19,12 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-18)
 
 **Core value:** Show the user what happened last time, clearly and honestly — so they can make their own informed decisions, never be told what to do.
-**Current focus:** Phase 08 — b2b-data-capture-layer
+**Current focus:** Phase 09 — pre-beta-polish
 
 ## Current Position
 
-Phase: 08 (b2b-data-capture-layer) — EXECUTING
-Plan: 8 of 8
+Phase: 09 (pre-beta-polish) — EXECUTING
+Plan: 2 of 7
 
 ## Performance Metrics
 
@@ -73,6 +73,7 @@ Plan: 8 of 8
 | Phase 08 P04 | 4 | 2 tasks | 2 files |
 | Phase 08 P06 | 302 | 2 tasks | 5 files |
 | Phase 08 P08 | 3 | 1 tasks | 0 files |
+| Phase 09 P05 | 2 | 1 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -132,6 +133,8 @@ Key constraints affecting this milestone:
 - [Phase 08]: SettingsScreen wrapped in Fragment to allow sibling Modals outside KeyboardAvoidingView — avoids z-index stacking issues
 - [Phase 08]: cardAnims extended from 4 to 5 entries to animate hypo button with cardAnims[4]
 - [Phase 08]: handleForeground wrapped in useCallback to satisfy useAppForeground dependency stability
+- [Phase 09]: Used display:none/flex pattern for tab switching to preserve scroll position in both tabs
+- [Phase 09]: Morning reading threshold set to 2-hour window around 7am next day for practical CGM reading availability
 
 ### Roadmap Evolution
 
@@ -151,6 +154,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-31T17:25:33.753Z
-Stopped at: Completed 08-08-PLAN.md task 1; awaiting human verification checkpoint
+Last session: 2026-04-08T21:08:56.209Z
+Stopped at: Completed 09-05-PLAN.md
 Resume file: None

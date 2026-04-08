@@ -70,7 +70,7 @@
 - [ ] **BETA-02**: About Me screen captures age range (mandatory, 7 options), gender (mandatory, 4 options), T1D duration (optional, 5 options), HbA1c mmol/mol (optional, free number input). Stored as `UserProfile` in AsyncStorage under `user_profile` key.
 - [ ] **BETA-03**: Hypo treatment rework -- presets shown as chip suggestions with free-text input for custom treatment type. Optional brand free-text input shown after selection. Amount value and amount unit are OPTIONAL (not required to save). Single item save. Backward-compatible with existing HypoTreatment records.
 - [ ] **BETA-04**: Tablet dosing section in Settings under Dosing area. Support multiple tablets (name, mg, amount per day on same row). Stored as `TabletDosing[]` in AsyncStorage under `tablet_dosing` key. Migrates legacy single `tabletName`/`tabletDose` from AppSettings on first load.
-- [ ] **BETA-05**: History page has two tabs: Tab 1 (Meals) shows existing view unchanged. Tab 2 (Long-acting) shows list of long-acting insulin doses with 12-hour glucose curves (using existing GlucoseChart), dose units, and highlighted morning reading.
+- [x] **BETA-05**: History page has two tabs: Tab 1 (Meals) shows existing view unchanged. Tab 2 (Long-acting) shows list of long-acting insulin doses with 12-hour glucose curves (using existing GlucoseChart), dose units, and highlighted morning reading.
 - [ ] **BETA-06**: Help & FAQ data sharing section updated to say data is fully anonymised and used to help improve diabetes care.
 - [ ] **BETA-07**: Keyboard no longer obscures save buttons across all screens (standardised KeyboardAvoidingView). No white flash on home navigation transitions (NavigationContainer custom dark theme + consistent background colours).
 
@@ -144,7 +144,7 @@
 | BETA-02 | Phase 9 | Pending |
 | BETA-03 | Phase 9 | Pending |
 | BETA-04 | Phase 9 | Pending |
-| BETA-05 | Phase 9 | Pending |
+| BETA-05 | Phase 9 | Complete |
 | BETA-06 | Phase 9 | Pending |
 | BETA-07 | Phase 9 | Pending |
 
