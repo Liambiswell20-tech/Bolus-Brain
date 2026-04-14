@@ -33,9 +33,6 @@ import { DayGroupHeader } from '../components/DayGroupHeader';
 import { SessionSubHeader } from '../components/SessionSubHeader';
 import { getMealFingerprint } from '../utils/mealFingerprint';
 import { Skeleton } from '~/components/ui/skeleton';
-import { Tabs, TabsList, TabsTrigger } from '~/components/ui/tabs';
-import { Text as UIText } from '~/components/ui/text';
-import { cn } from '~/lib/utils';
 import { COLORS, FONTS } from '../theme';
 
 // Enable LayoutAnimation on Android — wrapped in try/catch so it degrades
@@ -327,6 +324,59 @@ function HypoTreatmentCard({ treatment, onRefresh }: { treatment: HypoTreatment;
   );
 }
 
+// --- tab bar ---
+
+function HistoryTabBar({ activeTab, onTabChange }: { activeTab: 0 | 1; onTabChange: (tab: 0 | 1) => void }) {
+  return (
+    <View style={tabStyles.container}>
+      <Pressable
+        style={[tabStyles.tab, activeTab === 0 && tabStyles.activeTab]}
+        onPress={() => onTabChange(0)}
+      >
+        <Text style={[tabStyles.tabText, activeTab === 0 && tabStyles.activeTabText]}>
+          Meals
+        </Text>
+      </Pressable>
+      <Pressable
+        style={[tabStyles.tab, activeTab === 1 && tabStyles.activeTab]}
+        onPress={() => onTabChange(1)}
+      >
+        <Text style={[tabStyles.tabText, activeTab === 1 && tabStyles.activeTabText]}>
+          Long-acting
+        </Text>
+      </Pressable>
+    </View>
+  );
+}
+
+const tabStyles = StyleSheet.create({
+  container: {
+    flexDirection: 'row',
+    backgroundColor: COLORS.background,
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    gap: 0,
+  },
+  tab: {
+    flex: 1,
+    paddingVertical: 12,
+    alignItems: 'center',
+    borderBottomWidth: 2,
+    borderBottomColor: 'transparent',
+  },
+  activeTab: {
+    borderBottomColor: COLORS.green,
+  },
+  tabText: {
+    fontSize: 15,
+    color: COLORS.textMuted,
+    fontFamily: FONTS.regular,
+  },
+  activeTabText: {
+    color: COLORS.text,
+    fontFamily: FONTS.semiBold,
+  },
+});
 
 // --- long-acting card ---
 
@@ -750,31 +800,7 @@ export default function MealHistoryScreen() {
 
   return (
     <>
-      <Tabs
-        value={activeTab === 0 ? 'meals' : 'long-acting'}
-        onValueChange={(v: string) => setActiveTab(v === 'meals' ? 0 : 1)}
-      >
-        <TabsList className="bg-[#050706] w-full rounded-none h-auto px-4 pt-2 gap-0">
-          <TabsTrigger
-            value="meals"
-            className={cn(
-              'flex-1 rounded-none border-b-2 py-3 bg-transparent shadow-none',
-              activeTab === 0 ? 'border-b-[#30D158]' : 'border-b-transparent'
-            )}
-          >
-            <UIText>Meals</UIText>
-          </TabsTrigger>
-          <TabsTrigger
-            value="long-acting"
-            className={cn(
-              'flex-1 rounded-none border-b-2 py-3 bg-transparent shadow-none',
-              activeTab === 1 ? 'border-b-[#30D158]' : 'border-b-transparent'
-            )}
-          >
-            <UIText>Long-acting</UIText>
-          </TabsTrigger>
-        </TabsList>
-      </Tabs>
+      <HistoryTabBar activeTab={activeTab} onTabChange={setActiveTab} />
       <View style={{ flex: 1, display: activeTab === 0 ? 'flex' : 'none' }}>
         <FlatList
           data={listData}

@@ -9,9 +9,6 @@ import { GlucoseChart } from './GlucoseChart';
 import { OutcomeBadge } from './OutcomeBadge';
 import { SafetyDisclaimer } from './SafetyDisclaimer';
 import type { MealBottomSheetProps } from './types';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '~/components/ui/tabs';
-import { Text as UIText } from '~/components/ui/text';
-import { cn } from '~/lib/utils';
 
 export function MealBottomSheet({ sessions, visible, onClose }: MealBottomSheetProps) {
   const [activeTab, setActiveTab] = useState(0);
@@ -30,42 +27,29 @@ export function MealBottomSheet({ sessions, visible, onClose }: MealBottomSheetP
         {/* Drag handle */}
         <View style={styles.handle} />
 
-        <Tabs
-          value={activeSession?.id ?? ''}
-          onValueChange={(id: string) => {
-            const idx = sessions.findIndex(s => s.id === id);
-            if (idx >= 0) setActiveTab(idx);
-          }}
-        >
-          {/* Content area — scrollable per session */}
-          <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-            {sessions.map(s => (
-              <TabsContent key={s.id} value={s.id}>
-                <SessionDetail session={s} />
-              </TabsContent>
-            ))}
-          </ScrollView>
-
-          {/* Tab strip — at BOTTOM, above SafetyDisclaimer (per CONTEXT.md Decision 6) */}
-          {sessions.length > 1 && (
-            <TabsList className="bg-transparent h-auto rounded-none px-4 pt-2 flex-row flex-wrap gap-2 w-full">
-              {sessions.map(s => (
-                <TabsTrigger
-                  key={s.id}
-                  value={s.id}
-                  className={cn(
-                    'rounded-2xl px-3 py-1.5 shadow-none border-0',
-                    s.id === (activeSession?.id ?? '') ? 'bg-[#0A84FF]' : 'bg-[#2C2C2E]'
-                  )}
-                >
-                  <UIText className="text-xs">
-                    {new Date(s.startedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
-                  </UIText>
-                </TabsTrigger>
-              ))}
-            </TabsList>
+        {/* Content area — scrollable per session */}
+        <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+          {activeSession && (
+            <SessionDetail key={activeSession.id} session={activeSession} />
           )}
-        </Tabs>
+        </ScrollView>
+
+        {/* Tab strip — at BOTTOM, above SafetyDisclaimer (per CONTEXT.md Decision 6) */}
+        {sessions.length > 1 && (
+          <View style={styles.tabStrip}>
+            {sessions.map((s, i) => (
+              <Pressable
+                key={s.id}
+                style={[styles.tab, safeActiveTab === i && styles.tabActive]}
+                onPress={() => setActiveTab(i)}
+              >
+                <Text style={[styles.tabText, safeActiveTab === i && styles.tabTextActive]}>
+                  {new Date(s.startedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+        )}
 
         {/* SafetyDisclaimer always at bottom */}
         <SafetyDisclaimer />
@@ -274,6 +258,30 @@ const styles = StyleSheet.create({
   loadCurveBtnText: {
     fontSize: 14,
     color: '#0A84FF',
+    fontWeight: '600',
+  },
+  tabStrip: {
+    flexDirection: 'row',
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    gap: 8,
+    flexWrap: 'wrap',
+  },
+  tab: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    backgroundColor: '#2C2C2E',
+  },
+  tabActive: {
+    backgroundColor: '#0A84FF',
+  },
+  tabText: {
+    fontSize: 12,
+    color: '#8E8E93',
+  },
+  tabTextActive: {
+    color: '#FFFFFF',
     fontWeight: '600',
   },
 });
