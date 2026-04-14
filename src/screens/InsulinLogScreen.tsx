@@ -12,6 +12,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { Button } from '~/components/ui/button';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { saveInsulinLog, fetchAndStoreBasalCurve, InsulinLogType } from '../services/storage';
 import { loadSettings } from '../services/settings';
@@ -134,7 +135,8 @@ export default function InsulinLogScreen() {
           <Text style={styles.unitsLabel}>{cfg.unitsLabel}</Text>
         </View>
 
-        <Pressable
+        <Button
+          className="border-0"
           style={[styles.saveBtn, { backgroundColor: cfg.color }, saving && styles.saveBtnDisabled]}
           onPress={handleSave}
           disabled={saving}
@@ -143,7 +145,7 @@ export default function InsulinLogScreen() {
             ? <ActivityIndicator color="#fff" />
             : <Text style={styles.saveBtnText}>Save</Text>
           }
-        </Pressable>
+        </Button>
 
         {/* Late Entry toggle */}
         <Pressable

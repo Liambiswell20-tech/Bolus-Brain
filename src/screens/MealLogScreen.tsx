@@ -15,6 +15,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { Button } from '~/components/ui/button';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { fetchAndStoreCurve, loadSessionsWithMeals, saveMeal } from '../services/storage';
 import type { SessionWithMeals } from '../services/storage';
@@ -476,7 +477,8 @@ export default function MealLogScreen() {
         )}
 
         {/* Save */}
-        <Pressable
+        <Button
+          className="border-0"
           style={[styles.saveBtn, saving && styles.saveBtnDisabled]}
           onPress={handleSave}
           disabled={saving}
@@ -486,7 +488,7 @@ export default function MealLogScreen() {
           ) : (
             <Text style={styles.saveBtnText}>Save meal</Text>
           )}
-        </Pressable>
+        </Button>
 
       </ScrollView>
       <MealBottomSheet

@@ -1,5 +1,6 @@
 import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text } from 'react-native';
+import { Badge } from '~/components/ui/badge';
 import type { OutcomeBadge as OutcomeBadgeType } from '../utils/outcomeClassifier';
 import type { OutcomeBadgeProps } from './types';
 
@@ -19,11 +20,13 @@ export function OutcomeBadge({ badge, size = 'default' }: OutcomeBadgeProps) {
   const cfg = CONFIG[badge];
   const isSmall = size === 'small';
   return (
-    <View style={[
-      styles.badge,
-      { backgroundColor: cfg.bg },
-      isSmall ? styles.badgeSmall : styles.badgeDefault,
-    ]}>
+    <Badge
+      className="border-0 self-start"
+      style={[
+        { backgroundColor: cfg.bg },
+        isSmall ? styles.badgeSmall : styles.badgeDefault,
+      ]}
+    >
       <Text style={[
         styles.label,
         { color: cfg.text },
@@ -31,12 +34,11 @@ export function OutcomeBadge({ badge, size = 'default' }: OutcomeBadgeProps) {
       ]}>
         {cfg.label}
       </Text>
-    </View>
+    </Badge>
   );
 }
 
 const styles = StyleSheet.create({
-  badge: { alignSelf: 'flex-start', borderRadius: 20 },
   badgeDefault: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20 },
   badgeSmall:   { paddingHorizontal: 7,  paddingVertical: 2, borderRadius: 14 },
   label: { fontWeight: '600' },

@@ -13,6 +13,8 @@ import { classifyOutcome } from '../utils/outcomeClassifier';
 import { glucoseColor } from '../utils/glucoseColor';
 import { formatDate } from '../utils/formatDate';
 import { OutcomeBadge } from './OutcomeBadge';
+import { Card } from '~/components/ui/card';
+import { Badge } from '~/components/ui/badge';
 import type { MealHistoryCardProps } from './types';
 
 export function MealHistoryCard({ meal, onPress }: MealHistoryCardProps) {
@@ -21,7 +23,7 @@ export function MealHistoryCard({ meal, onPress }: MealHistoryCardProps) {
   const badge = classifyOutcome(meal.glucoseResponse);
 
   return (
-    <View style={styles.card}>
+    <Card style={styles.card}>
       {/* Edit button row */}
       <View style={styles.editRow}>
         <View style={{ flex: 1 }} />
@@ -47,9 +49,9 @@ export function MealHistoryCard({ meal, onPress }: MealHistoryCardProps) {
           <View style={styles.mealTitleRow}>
             <Text style={styles.mealName} numberOfLines={1}>{meal.name}</Text>
             {meal.insulinUnits > 0 && (
-              <View style={styles.insulinBadge}>
+              <Badge className="border-0" style={styles.insulinBadge}>
                 <Text style={styles.insulinBadgeText}>{meal.insulinUnits}u</Text>
-              </View>
+              </Badge>
             )}
             <OutcomeBadge badge={badge} size="small" />
           </View>
@@ -67,7 +69,7 @@ export function MealHistoryCard({ meal, onPress }: MealHistoryCardProps) {
           )}
         </View>
       </Pressable>
-    </View>
+    </Card>
   );
 }
 

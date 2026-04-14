@@ -659,9 +659,10 @@ export default function MealHistoryScreen() {
       sessionsByDay.get(key)!.push(session);
     }
 
-    // Build day buckets for insulin logs
+    // Build day buckets for insulin logs (long-acting excluded — they have their own tab)
     const insulinByDay = new Map<string, InsulinLog[]>();
     for (const log of insulinLogs) {
+      if (log.type === 'long-acting') continue;
       const key = localDateKey(log.loggedAt);
       if (!insulinByDay.has(key)) insulinByDay.set(key, []);
       insulinByDay.get(key)!.push(log);
@@ -686,7 +687,7 @@ export default function MealHistoryScreen() {
 
     // Today's items — flat, no header
     const todaySessions = sessionsByDay.get(today) ?? [];
-    const todayInsulin = insulinByDay.get(today) ?? [];
+    const todayInsulin = (insulinByDay.get(today) ?? []);
     const todayHypo = hypoByDay.get(today) ?? [];
 
     // Interleave today's sessions (meals), insulin, and hypo by time, newest-first

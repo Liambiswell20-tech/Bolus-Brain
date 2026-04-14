@@ -19,7 +19,7 @@ import {
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Svg, { Path } from 'react-native-svg';
-import { fetchLatestGlucose, fetchGlucosesSince, fetchGlucoseRange, GlucoseReading, CurvePoint } from '../services/nightscout';
+import { fetchLatestGlucose, fetchGlucosesSince, fetchGlucoseRange, trendArrow, GlucoseReading, CurvePoint } from '../services/nightscout';
 import { fetchAndStoreCurve, saveMeal, loadGlucoseStore, updateGlucoseStore, loadCachedHba1c, computeAndCacheHba1c, Hba1cEstimate, GlucoseResponse, fetchAndStoreHypoRecoveryCurve } from '../services/storage';
 import { GlucoseChart } from '../components/GlucoseChart';
 import { glucoseToArcAngle } from '../utils/glucoseToArcAngle';
@@ -302,7 +302,14 @@ export default function HomeScreen() {
                 <Text style={[styles.glucoseValue, { color: glucoseColour }]}>
                   {reading ? reading.mmol.toFixed(1) : '– –'}
                 </Text>
-                <Text style={styles.glucoseUnit}>mmol/L</Text>
+                <View style={styles.unitRow}>
+                  <Text style={styles.glucoseUnit}>mmol/L</Text>
+                  {reading && (
+                    <Text style={[styles.trendArrow, { color: glucoseColour }]}>
+                      {trendArrow(reading.direction)}
+                    </Text>
+                  )}
+                </View>
                 {reading && (
                   <View style={styles.liveRow}>
                     <Animated.View style={[styles.liveDot, { opacity: pulseAnim }]} />
@@ -626,10 +633,19 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     fontFamily: FONTS.mono,
   },
+  unitRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
   glucoseUnit: {
     fontSize: 14,
     color: COLORS.textSecondary,
     fontFamily: FONTS.regular,
+  },
+  trendArrow: {
+    fontSize: 28,
+    fontWeight: '700',
   },
   liveRow: {
     flexDirection: 'row',
