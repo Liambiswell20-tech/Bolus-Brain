@@ -16,6 +16,12 @@ import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/dat
 import { loadInsulinLogs, updateInsulinLog, deleteInsulinLog, InsulinLogType } from '../services/storage';
 import type { RootStackParamList } from '../../App';
 import { COLORS } from '../theme';
+import {
+  Dialog, DialogClose, DialogContent, DialogDescription,
+  DialogFooter, DialogHeader, DialogTitle,
+} from '~/components/ui/dialog';
+import { Button } from '~/components/ui/button';
+import { Text as UIText } from '~/components/ui/text';
 
 const TYPE_CONFIG: Record<InsulinLogType, { label: string; color: string; emoji: string }> = {
   'long-acting': { label: 'Long-acting insulin', color: '#FF3B30', emoji: '❤️' },
@@ -35,6 +41,7 @@ export default function EditInsulinScreen() {
   const [loggedAt, setLoggedAt] = useState(new Date());
   const [showTimePicker, setShowTimePicker] = useState(false);
   const [type, setType] = useState<InsulinLogType>('correction');
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
   useEffect(() => {
     loadInsulinLogs().then(logs => {
@@ -73,25 +80,18 @@ export default function EditInsulinScreen() {
   }
 
   function handleDelete() {
-    Alert.alert(
-      'Delete entry',
-      'This will permanently remove this insulin entry. This cannot be undone.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await deleteInsulinLog(logId);
-              navigation.goBack();
-            } catch {
-              Alert.alert('Delete failed', 'Could not delete entry. Try again.');
-            }
-          },
-        },
-      ]
-    );
+    setDeleteDialogOpen(true);
+  }
+
+  async function handleDeleteConfirm() {
+    try {
+      await deleteInsulinLog(logId);
+      setDeleteDialogOpen(false);
+      navigation.goBack();
+    } catch {
+      setDeleteDialogOpen(false);
+      Alert.alert('Delete failed', 'Could not delete entry. Try again.');
+    }
   }
 
   if (loading) {
@@ -105,6 +105,7 @@ export default function EditInsulinScreen() {
   const cfg = TYPE_CONFIG[type];
 
   return (
+  <>
     <KeyboardAvoidingView
       style={{ flex: 1, backgroundColor: COLORS.background }}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -184,6 +185,28 @@ export default function EditInsulinScreen() {
 
       </ScrollView>
     </KeyboardAvoidingView>
+
+    <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+      <DialogContent className="bg-[#1C1C1E] border-[#2C2C2E]">
+        <DialogHeader>
+          <DialogTitle className="text-white">Delete entry</DialogTitle>
+          <DialogDescription className="text-[#8E8E93]">
+            This will permanently remove this insulin entry. This cannot be undone.
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter className="flex-row gap-3">
+          <DialogClose asChild>
+            <Button variant="outline" className="flex-1 border-[#3A3A3C]">
+              <UIText>Cancel</UIText>
+            </Button>
+          </DialogClose>
+          <Button variant="destructive" className="flex-1" onPress={handleDeleteConfirm}>
+            <UIText>Delete</UIText>
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  </>
   );
 }
 

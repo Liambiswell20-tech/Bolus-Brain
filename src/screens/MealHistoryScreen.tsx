@@ -32,6 +32,10 @@ import { GlucoseChart } from '../components/GlucoseChart';
 import { DayGroupHeader } from '../components/DayGroupHeader';
 import { SessionSubHeader } from '../components/SessionSubHeader';
 import { getMealFingerprint } from '../utils/mealFingerprint';
+import { Skeleton } from '~/components/ui/skeleton';
+import { Tabs, TabsList, TabsTrigger } from '~/components/ui/tabs';
+import { Text as UIText } from '~/components/ui/text';
+import { cn } from '~/lib/utils';
 import { COLORS, FONTS } from '../theme';
 
 // Enable LayoutAnimation on Android — wrapped in try/catch so it degrades
@@ -323,59 +327,6 @@ function HypoTreatmentCard({ treatment, onRefresh }: { treatment: HypoTreatment;
   );
 }
 
-// --- tab bar ---
-
-function HistoryTabBar({ activeTab, onTabChange }: { activeTab: 0 | 1; onTabChange: (tab: 0 | 1) => void }) {
-  return (
-    <View style={tabStyles.container}>
-      <Pressable
-        style={[tabStyles.tab, activeTab === 0 && tabStyles.activeTab]}
-        onPress={() => onTabChange(0)}
-      >
-        <Text style={[tabStyles.tabText, activeTab === 0 && tabStyles.activeTabText]}>
-          Meals
-        </Text>
-      </Pressable>
-      <Pressable
-        style={[tabStyles.tab, activeTab === 1 && tabStyles.activeTab]}
-        onPress={() => onTabChange(1)}
-      >
-        <Text style={[tabStyles.tabText, activeTab === 1 && tabStyles.activeTabText]}>
-          Long-acting
-        </Text>
-      </Pressable>
-    </View>
-  );
-}
-
-const tabStyles = StyleSheet.create({
-  container: {
-    flexDirection: 'row',
-    backgroundColor: COLORS.background,
-    paddingHorizontal: 16,
-    paddingTop: 8,
-    gap: 0,
-  },
-  tab: {
-    flex: 1,
-    paddingVertical: 12,
-    alignItems: 'center',
-    borderBottomWidth: 2,
-    borderBottomColor: 'transparent',
-  },
-  activeTab: {
-    borderBottomColor: COLORS.green,
-  },
-  tabText: {
-    fontSize: 15,
-    color: COLORS.textMuted,
-    fontFamily: FONTS.regular,
-  },
-  activeTabText: {
-    color: COLORS.text,
-    fontFamily: FONTS.semiBold,
-  },
-});
 
 // --- long-acting card ---
 
@@ -772,8 +723,17 @@ export default function MealHistoryScreen() {
 
   if (loading) {
     return (
-      <View style={styles.center}>
-        <ActivityIndicator color="#30D158" />
+      <View style={{ flex: 1, backgroundColor: COLORS.background, padding: 16, gap: 12 }}>
+        {[1, 2, 3].map(i => (
+          <View key={i} className="w-full rounded-2xl bg-[#1C1C1E] p-4 gap-3">
+            <View className="flex-row justify-between items-center">
+              <Skeleton className="h-4 w-24 bg-[#2C2C2E]" />
+              <Skeleton className="h-6 w-16 rounded-full bg-[#2C2C2E]" />
+            </View>
+            <Skeleton className="h-5 w-3/4 bg-[#2C2C2E]" />
+            <Skeleton className="h-[120px] w-full rounded-lg bg-[#2C2C2E]" />
+          </View>
+        ))}
       </View>
     );
   }
@@ -790,7 +750,31 @@ export default function MealHistoryScreen() {
 
   return (
     <>
-      <HistoryTabBar activeTab={activeTab} onTabChange={setActiveTab} />
+      <Tabs
+        value={activeTab === 0 ? 'meals' : 'long-acting'}
+        onValueChange={(v: string) => setActiveTab(v === 'meals' ? 0 : 1)}
+      >
+        <TabsList className="bg-[#050706] w-full rounded-none h-auto px-4 pt-2 gap-0">
+          <TabsTrigger
+            value="meals"
+            className={cn(
+              'flex-1 rounded-none border-b-2 py-3 bg-transparent shadow-none',
+              activeTab === 0 ? 'border-b-[#30D158]' : 'border-b-transparent'
+            )}
+          >
+            <UIText>Meals</UIText>
+          </TabsTrigger>
+          <TabsTrigger
+            value="long-acting"
+            className={cn(
+              'flex-1 rounded-none border-b-2 py-3 bg-transparent shadow-none',
+              activeTab === 1 ? 'border-b-[#30D158]' : 'border-b-transparent'
+            )}
+          >
+            <UIText>Long-acting</UIText>
+          </TabsTrigger>
+        </TabsList>
+      </Tabs>
       <View style={{ flex: 1, display: activeTab === 0 ? 'flex' : 'none' }}>
         <FlatList
           data={listData}

@@ -14,6 +14,7 @@ import { fetchGlucoseRange } from './src/services/nightscout';
 import DataSharingOnboardingScreen from './src/screens/DataSharingOnboardingScreen';
 import AboutMeOnboardingScreen from './src/screens/AboutMeOnboardingScreen';
 import EquipmentOnboardingScreen from './src/screens/EquipmentOnboardingScreen';
+import { PortalHost } from '@rn-primitives/portal';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import HomeScreen from './src/screens/HomeScreen';
 import MealLogScreen from './src/screens/MealLogScreen';
@@ -237,6 +238,7 @@ export default function App() {
           <Stack.Screen name="Help" component={HelpScreen} options={{ title: 'Help & FAQ' }} />
         </Stack.Navigator>
       </NavigationContainer>
+      <PortalHost />
     </SafeAreaProvider>
   );
 }

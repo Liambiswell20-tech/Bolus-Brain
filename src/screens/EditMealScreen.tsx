@@ -18,6 +18,12 @@ import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/dat
 import { loadMeals, updateMeal, deleteMeal, fetchAndStoreCurveForMeal } from '../services/storage';
 import type { RootStackParamList } from '../../App';
 import { COLORS } from '../theme';
+import {
+  Dialog, DialogClose, DialogContent, DialogDescription,
+  DialogFooter, DialogHeader, DialogTitle,
+} from '~/components/ui/dialog';
+import { Button } from '~/components/ui/button';
+import { Text as UIText } from '~/components/ui/text';
 
 export default function EditMealScreen() {
   const navigation = useNavigation();
@@ -32,6 +38,7 @@ export default function EditMealScreen() {
   const [insulinUnits, setInsulinUnits] = useState('');
   const [loggedAt, setLoggedAt] = useState(new Date());
   const [showTimePicker, setShowTimePicker] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
   // Load existing meal data
   useEffect(() => {
@@ -108,25 +115,18 @@ export default function EditMealScreen() {
   }
 
   function handleDelete() {
-    Alert.alert(
-      'Delete meal',
-      'This will permanently remove this meal and its glucose curve. This cannot be undone.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await deleteMeal(mealId);
-              navigation.goBack();
-            } catch {
-              Alert.alert('Delete failed', 'Could not delete meal. Try again.');
-            }
-          },
-        },
-      ]
-    );
+    setDeleteDialogOpen(true);
+  }
+
+  async function handleDeleteConfirm() {
+    try {
+      await deleteMeal(mealId);
+      setDeleteDialogOpen(false);
+      navigation.goBack();
+    } catch {
+      setDeleteDialogOpen(false);
+      Alert.alert('Delete failed', 'Could not delete meal. Try again.');
+    }
   }
 
   if (loading) {
@@ -138,111 +138,134 @@ export default function EditMealScreen() {
   }
 
   return (
-    <KeyboardAvoidingView
-      style={{ flex: 1, backgroundColor: COLORS.background }}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-    >
-      <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
+    <>
+      <KeyboardAvoidingView
+        style={{ flex: 1, backgroundColor: COLORS.background }}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
+        <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
 
-        {/* Photo */}
-        <Pressable style={styles.photoArea} onPress={handleCamera}>
-          {photoUri ? (
-            <Image source={{ uri: photoUri }} style={styles.photo} />
-          ) : (
-            <View style={styles.photoPlaceholder}>
-              <Text style={styles.cameraIcon}>📷</Text>
-              <Text style={styles.photoHint}>Tap to take a new photo</Text>
+          {/* Photo */}
+          <Pressable style={styles.photoArea} onPress={handleCamera}>
+            {photoUri ? (
+              <Image source={{ uri: photoUri }} style={styles.photo} />
+            ) : (
+              <View style={styles.photoPlaceholder}>
+                <Text style={styles.cameraIcon}>📷</Text>
+                <Text style={styles.photoHint}>Tap to take a new photo</Text>
+              </View>
+            )}
+          </Pressable>
+
+          {photoUri && (
+            <Pressable onPress={handleCamera} style={styles.retakeBtn}>
+              <Text style={styles.retakeBtnText}>Retake photo</Text>
+            </Pressable>
+          )}
+
+          <Pressable onPress={handlePickFromLibrary} style={styles.libraryBtn}>
+            <Text style={styles.libraryBtnText}>Choose from library</Text>
+          </Pressable>
+
+          {/* Meal name */}
+          <Text style={styles.label}>Meal name</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="e.g. Chicken pasta"
+            placeholderTextColor="#48484A"
+            value={mealName}
+            onChangeText={setMealName}
+            returnKeyType="next"
+          />
+
+          {/* Insulin units */}
+          <Text style={styles.label}>Insulin units</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="e.g. 6"
+            placeholderTextColor="#48484A"
+            value={insulinUnits}
+            onChangeText={setInsulinUnits}
+            keyboardType="decimal-pad"
+            returnKeyType="done"
+          />
+
+          {/* Logged at */}
+          <Text style={styles.label}>Logged at</Text>
+          <Pressable style={styles.timeRow} onPress={() => setShowTimePicker(true)}>
+            <Text style={styles.timeText}>
+              {loggedAt.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false })}
+              {'  '}
+              <Text style={styles.timeDateText}>
+                {loggedAt.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
+              </Text>
+            </Text>
+            <Text style={styles.timeChange}>Change</Text>
+          </Pressable>
+
+          {showTimePicker && (
+            <View style={styles.pickerContainer}>
+              <DateTimePicker
+                value={loggedAt}
+                mode="datetime"
+                is24Hour
+                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                themeVariant="dark"
+                onChange={(_event: DateTimePickerEvent, date?: Date) => {
+                  if (Platform.OS !== 'ios') setShowTimePicker(false);
+                  if (date) setLoggedAt(date);
+                }}
+              />
+              {Platform.OS === 'ios' && (
+                <Pressable onPress={() => setShowTimePicker(false)} style={styles.pickerDone}>
+                  <Text style={styles.pickerDoneText}>Done</Text>
+                </Pressable>
+              )}
             </View>
           )}
-        </Pressable>
 
-        {photoUri && (
-          <Pressable onPress={handleCamera} style={styles.retakeBtn}>
-            <Text style={styles.retakeBtnText}>Retake photo</Text>
-          </Pressable>
-        )}
-
-        <Pressable onPress={handlePickFromLibrary} style={styles.libraryBtn}>
-          <Text style={styles.libraryBtnText}>Choose from library</Text>
-        </Pressable>
-
-        {/* Meal name */}
-        <Text style={styles.label}>Meal name</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="e.g. Chicken pasta"
-          placeholderTextColor="#48484A"
-          value={mealName}
-          onChangeText={setMealName}
-          returnKeyType="next"
-        />
-
-        {/* Insulin units */}
-        <Text style={styles.label}>Insulin units</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="e.g. 6"
-          placeholderTextColor="#48484A"
-          value={insulinUnits}
-          onChangeText={setInsulinUnits}
-          keyboardType="decimal-pad"
-          returnKeyType="done"
-        />
-
-        {/* Logged at */}
-        <Text style={styles.label}>Logged at</Text>
-        <Pressable style={styles.timeRow} onPress={() => setShowTimePicker(true)}>
-          <Text style={styles.timeText}>
-            {loggedAt.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false })}
-            {'  '}
-            <Text style={styles.timeDateText}>
-              {loggedAt.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
-            </Text>
-          </Text>
-          <Text style={styles.timeChange}>Change</Text>
-        </Pressable>
-
-        {showTimePicker && (
-          <View style={styles.pickerContainer}>
-            <DateTimePicker
-              value={loggedAt}
-              mode="datetime"
-              is24Hour
-              display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-              themeVariant="dark"
-              onChange={(_event: DateTimePickerEvent, date?: Date) => {
-                if (Platform.OS !== 'ios') setShowTimePicker(false);
-                if (date) setLoggedAt(date);
-              }}
-            />
-            {Platform.OS === 'ios' && (
-              <Pressable onPress={() => setShowTimePicker(false)} style={styles.pickerDone}>
-                <Text style={styles.pickerDoneText}>Done</Text>
-              </Pressable>
+          {/* Save */}
+          <Pressable
+            style={[styles.saveBtn, saving && styles.saveBtnDisabled]}
+            onPress={handleSave}
+            disabled={saving}
+          >
+            {saving ? (
+              <ActivityIndicator color="#000" />
+            ) : (
+              <Text style={styles.saveBtnText}>Save changes</Text>
             )}
-          </View>
-        )}
+          </Pressable>
 
-        {/* Save */}
-        <Pressable
-          style={[styles.saveBtn, saving && styles.saveBtnDisabled]}
-          onPress={handleSave}
-          disabled={saving}
-        >
-          {saving ? (
-            <ActivityIndicator color="#000" />
-          ) : (
-            <Text style={styles.saveBtnText}>Save changes</Text>
-          )}
-        </Pressable>
+          {/* Delete */}
+          <Pressable style={styles.deleteBtn} onPress={handleDelete}>
+            <Text style={styles.deleteBtnText}>Delete meal</Text>
+          </Pressable>
 
-        {/* Delete */}
-        <Pressable style={styles.deleteBtn} onPress={handleDelete}>
-          <Text style={styles.deleteBtnText}>Delete meal</Text>
-        </Pressable>
+        </ScrollView>
+      </KeyboardAvoidingView>
 
-      </ScrollView>
-    </KeyboardAvoidingView>
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent className="bg-[#1C1C1E] border-[#2C2C2E]">
+          <DialogHeader>
+            <DialogTitle className="text-white">Delete meal</DialogTitle>
+            <DialogDescription className="text-[#8E8E93]">
+              This will permanently remove this meal and its glucose curve. This cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex-row gap-3">
+            <DialogClose asChild>
+              <Button variant="outline" className="flex-1 border-[#3A3A3C]">
+                <UIText>Cancel</UIText>
+              </Button>
+            </DialogClose>
+            <Button variant="destructive" className="flex-1" onPress={handleDeleteConfirm}>
+              <UIText>Delete</UIText>
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
 

@@ -1,14 +1,10 @@
 import React from 'react';
 import { StyleSheet, Text, View, useWindowDimensions } from 'react-native';
-import Svg, { G, Line, Text as SvgText } from 'react-native-svg';
+import { LineChart } from 'react-native-gifted-charts';
+import type { LineSegment } from 'react-native-gifted-charts';
 import type { GlucoseChartProps } from './types';
 
-const CHART_PADDING = 32; // 16px each side, matches card interior
-const Y_AXIS_WIDTH = 36;
-const PADDING_TOP = 8;
-const PADDING_BOTTOM = 8;
-const PADDING_BOTTOM_WITH_TIME = 22;
-const PADDING_RIGHT = 4;
+const CHART_HORIZONTAL_PADDING = 32; // 16px each side, matches card interior
 
 function segmentColor(mmol: number): string {
   if (mmol < 3.9) return '#FF3B30';  // hypo — red
@@ -25,16 +21,30 @@ function formatHour(epochMs: number): string {
   return m === 0 ? `${h12}${suffix}` : `${h12}:${String(m).padStart(2, '0')}${suffix}`;
 }
 
+/** Build merged lineSegments — consecutive same-color segments are merged. */
+function buildLineSegments(values: number[]): LineSegment[] {
+  if (values.length < 2) return [];
+  const segments: LineSegment[] = [];
+  let start = 0;
+  let color = segmentColor((values[0] + values[1]) / 2);
+
+  for (let i = 1; i < values.length - 1; i++) {
+    const next = segmentColor((values[i] + values[i + 1]) / 2);
+    if (next !== color) {
+      segments.push({ startIndex: start, endIndex: i, color });
+      start = i;
+      color = next;
+    }
+  }
+  segments.push({ startIndex: start, endIndex: values.length - 1, color });
+  return segments;
+}
+
 export function GlucoseChart({ response, height = 120, showTimeLabels = false }: GlucoseChartProps) {
   const { width: screenWidth } = useWindowDimensions();
-  const bottomPad = showTimeLabels ? PADDING_BOTTOM_WITH_TIME : PADDING_BOTTOM;
-  const drawWidth = screenWidth - CHART_PADDING - Y_AXIS_WIDTH - PADDING_RIGHT;
-  const drawHeight = height - PADDING_TOP - bottomPad;
-  const totalSvgWidth = Y_AXIS_WIDTH + drawWidth + PADDING_RIGHT;
+  const readings = response.readings;
 
-  const rawValues = response.readings.map(r => r.mmol);
-
-  if (rawValues.length < 2) {
+  if (readings.length < 2) {
     return (
       <View style={[styles.container, { height }]}>
         <Text style={styles.noData}>Not enough data</Text>
@@ -42,109 +52,85 @@ export function GlucoseChart({ response, height = 120, showTimeLabels = false }:
     );
   }
 
+  const rawValues = readings.map(r => r.mmol);
   const minVal = Math.min(...rawValues);
   const maxVal = Math.max(...rawValues);
 
   const yMin = Math.max(2.0, Math.floor(minVal) - 1);
   const yMax = Math.max(14.0, Math.ceil(maxVal) + 1);
-  const range = yMax - yMin;
 
-  function toY(mmol: number): number {
-    // Higher glucose → smaller y (top of chart)
-    return PADDING_TOP + drawHeight - ((mmol - yMin) / range) * drawHeight;
-  }
+  // Data points — gifted-charts uses { value } format
+  const data = rawValues.map(v => ({ value: v }));
 
-  function toX(i: number): number {
-    // First point at 0, last point exactly at drawWidth
-    return (i / (rawValues.length - 1)) * drawWidth;
-  }
+  // Per-segment coloring based on glucose range
+  const lineSegments = buildLineSegments(rawValues);
 
-  // Per-segment coloring — color by midpoint average of the two endpoints
-  const segments = rawValues.slice(0, -1).map((v1, i) => {
-    const v2 = rawValues[i + 1];
-    return {
-      x1: toX(i),   y1: toY(v1),
-      x2: toX(i + 1), y2: toY(v2),
-      color: segmentColor((v1 + v2) / 2),
-    };
-  });
+  // Time labels along x-axis (up to 5 evenly spaced)
+  const xAxisLabelTexts: string[] | undefined = showTimeLabels
+    ? (() => {
+        const labels: string[] = new Array(readings.length).fill('');
+        const count = Math.min(5, readings.length);
+        for (let i = 0; i < count; i++) {
+          const idx = Math.round((i / (count - 1)) * (readings.length - 1));
+          labels[idx] = formatHour(readings[idx].date);
+        }
+        return labels;
+      })()
+    : undefined;
 
-  const hypoY = toY(3.9);
-  const highY = toY(10.0);
-
-  const sectionCount = 4;
-  const step = range / sectionCount;
-  const yLabels = Array.from({ length: sectionCount + 1 }, (_, i) => ({
-    label: (yMin + i * step).toFixed(1),
-    y: toY(yMin + i * step),
-  }));
+  const chartWidth = screenWidth - CHART_HORIZONTAL_PADDING - 40; // 40 ≈ y-axis width
+  const chartHeight = height - (showTimeLabels ? 30 : 10);
 
   return (
     <View style={[styles.container, { height }]}>
-      <Svg width={totalSvgWidth} height={height}>
-        {/* Y-axis labels */}
-        {yLabels.map((l, i) => (
-          <SvgText
-            key={i}
-            x={Y_AXIS_WIDTH - 4}
-            y={l.y + 3}
-            textAnchor="end"
-            fontSize={9}
-            fill="#636366"
-          >
-            {l.label}
-          </SvgText>
-        ))}
-
-        {/* Chart drawing area, offset by Y_AXIS_WIDTH */}
-        <G x={Y_AXIS_WIDTH}>
-          {/* Hypo reference line — 3.9 mmol/L */}
-          <Line
-            x1={0} y1={hypoY} x2={drawWidth} y2={hypoY}
-            stroke="#FF3B30" strokeWidth={1} strokeDasharray="4 4"
-          />
-          {/* High reference line — 10.0 mmol/L */}
-          <Line
-            x1={0} y1={highY} x2={drawWidth} y2={highY}
-            stroke="#FF9500" strokeWidth={1} strokeDasharray="4 4"
-          />
-          {/* Glucose curve — one segment per reading pair */}
-          {segments.map((seg, i) => (
-            <Line
-              key={i}
-              x1={seg.x1} y1={seg.y1}
-              x2={seg.x2} y2={seg.y2}
-              stroke={seg.color}
-              strokeWidth={2}
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          ))}
-          {/* X-axis time labels */}
-          {showTimeLabels && (() => {
-            const dates = response.readings.map(r => r.date);
-            const count = Math.min(5, rawValues.length);
-            const labelY = height - 4;
-            const labels: { x: number; text: string }[] = [];
-            for (let i = 0; i < count; i++) {
-              const idx = Math.round((i / (count - 1)) * (rawValues.length - 1));
-              labels.push({ x: toX(idx), text: formatHour(dates[idx]) });
-            }
-            return labels.map((l, i) => (
-              <SvgText
-                key={`t${i}`}
-                x={l.x}
-                y={labelY}
-                textAnchor="middle"
-                fontSize={9}
-                fill="#636366"
-              >
-                {l.text}
-              </SvgText>
-            ));
-          })()}
-        </G>
-      </Svg>
+      <LineChart
+        data={data}
+        height={chartHeight}
+        width={chartWidth}
+        adjustToWidth
+        disableScroll
+        hideDataPoints
+        curved
+        curvature={0.15}
+        color="#30D158"
+        thickness={2}
+        lineSegments={lineSegments}
+        yAxisOffset={yMin}
+        maxValue={yMax - yMin}
+        noOfSections={4}
+        formatYLabel={(val: string) => (parseFloat(val) + yMin).toFixed(1)}
+        yAxisTextStyle={styles.yAxisText}
+        yAxisColor="transparent"
+        yAxisThickness={0}
+        xAxisColor="transparent"
+        xAxisThickness={0}
+        hideRules
+        backgroundColor="transparent"
+        initialSpacing={0}
+        endSpacing={0}
+        showReferenceLine1
+        referenceLine1Position={3.9 - yMin}
+        referenceLine1Config={{
+          color: '#FF3B30',
+          dashWidth: 4,
+          dashGap: 4,
+          thickness: 1,
+          type: 'dashed',
+        }}
+        showReferenceLine2
+        referenceLine2Position={10.0 - yMin}
+        referenceLine2Config={{
+          color: '#FF9500',
+          dashWidth: 4,
+          dashGap: 4,
+          thickness: 1,
+          type: 'dashed',
+        }}
+        {...(xAxisLabelTexts ? {
+          xAxisLabelTexts,
+          xAxisLabelTextStyle: styles.xAxisText,
+        } : {})}
+      />
       {response.isPartial && (
         <Text style={styles.partialNote}>Curve still building</Text>
       )}
@@ -170,5 +156,13 @@ const styles = StyleSheet.create({
     color: '#FF9500',
     textAlign: 'center',
     paddingVertical: 4,
+  },
+  yAxisText: {
+    color: '#636366',
+    fontSize: 9,
+  },
+  xAxisText: {
+    color: '#636366',
+    fontSize: 9,
   },
 });

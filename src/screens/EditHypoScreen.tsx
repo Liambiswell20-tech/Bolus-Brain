@@ -17,6 +17,12 @@ import { loadHypoTreatments, updateHypoTreatment, deleteHypoTreatment } from '..
 import type { HypoTreatment } from '../types/equipment';
 import type { RootStackParamList } from '../../App';
 import { COLORS } from '../theme';
+import {
+  Dialog, DialogClose, DialogContent, DialogDescription,
+  DialogFooter, DialogHeader, DialogTitle,
+} from '~/components/ui/dialog';
+import { Button } from '~/components/ui/button';
+import { Text as UIText } from '~/components/ui/text';
 
 const TREATMENT_TYPES = ['Glucose tablets', 'Juice', 'Sweets', 'Gel', 'Other'] as const;
 const AMOUNT_UNITS: Array<HypoTreatment['amount_unit']> = ['tablets', 'ml', 'g', 'food'];
@@ -35,6 +41,7 @@ export default function EditHypoScreen() {
   const [notes, setNotes] = useState('');
   const [loggedAt, setLoggedAt] = useState(new Date());
   const [showTimePicker, setShowTimePicker] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
   useEffect(() => {
     loadHypoTreatments().then(treatments => {
@@ -78,25 +85,18 @@ export default function EditHypoScreen() {
   }
 
   function handleDelete() {
-    Alert.alert(
-      'Delete treatment',
-      'This will permanently remove this hypo treatment. This cannot be undone.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await deleteHypoTreatment(treatmentId);
-              navigation.goBack();
-            } catch {
-              Alert.alert('Delete failed', 'Could not delete treatment. Try again.');
-            }
-          },
-        },
-      ]
-    );
+    setDeleteDialogOpen(true);
+  }
+
+  async function handleDeleteConfirm() {
+    try {
+      await deleteHypoTreatment(treatmentId);
+      setDeleteDialogOpen(false);
+      navigation.goBack();
+    } catch {
+      setDeleteDialogOpen(false);
+      Alert.alert('Delete failed', 'Could not delete treatment. Try again.');
+    }
   }
 
   if (loading) {
@@ -108,6 +108,7 @@ export default function EditHypoScreen() {
   }
 
   return (
+    <>
     <KeyboardAvoidingView
       style={{ flex: 1, backgroundColor: COLORS.background }}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -221,6 +222,28 @@ export default function EditHypoScreen() {
 
       </ScrollView>
     </KeyboardAvoidingView>
+
+    <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+      <DialogContent className="bg-[#1C1C1E] border-[#2C2C2E]">
+        <DialogHeader>
+          <DialogTitle className="text-white">Delete treatment</DialogTitle>
+          <DialogDescription className="text-[#8E8E93]">
+            This will permanently remove this hypo treatment. This cannot be undone.
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter className="flex-row gap-3">
+          <DialogClose asChild>
+            <Button variant="outline" className="flex-1 border-[#3A3A3C]">
+              <UIText>Cancel</UIText>
+            </Button>
+          </DialogClose>
+          <Button variant="destructive" className="flex-1" onPress={handleDeleteConfirm}>
+            <UIText>Delete</UIText>
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+    </>
   );
 }
 

@@ -11,7 +11,6 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  Switch,
   Text,
   TextInput,
   View,
@@ -21,6 +20,7 @@ import { loadSettings, saveSettings, AppSettings } from '../services/settings';
 import { loadTabletDosing, saveTabletDosing } from '../services/storage';
 import { getCurrentEquipmentProfile, changeEquipment } from '../utils/equipmentProfile';
 import EquipmentChangeConfirmation from '../components/EquipmentChangeConfirmation';
+import { Switch } from '~/components/ui/switch';
 import { COLORS, FONTS } from '../theme';
 import type { DataConsent, TabletDosing } from '../types/equipment';
 import type { RootStackParamList } from '../../App';
@@ -405,10 +405,8 @@ export default function SettingsScreen() {
                 </Text>
               </View>
               <Switch
-                value={consent.consented}
-                onValueChange={handleConsentToggle}
-                trackColor={{ false: '#3A3A3C', true: COLORS.green }}
-                thumbColor="#FFFFFF"
+                checked={consent.consented}
+                onCheckedChange={handleConsentToggle}
               />
             </View>
           </View>
