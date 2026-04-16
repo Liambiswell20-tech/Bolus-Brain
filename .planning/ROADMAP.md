@@ -140,7 +140,7 @@ Phases 1 -> 2 -> 3 -> 4 -> 5 execute in numeric order.
 | 9. Pre-Beta Polish | 7/7 | Complete   | 2026-04-08 |
 | 10. UI Component Library & Charting | —/— | Complete   | 2026-04-14 |
 | 10.5. MemStack Selective Install | —/— | Complete   | 2026-04-14 |
-| 11. Supabase Migration & Multi-User Backend | 0/TBD | Not started | - |
+| 11. Supabase Migration & Multi-User Backend | 0/8 | Planned | - |
 
 ### Phase 7: Premium features and monetization strategy
 
@@ -155,17 +155,27 @@ Plans:
 ### Phase 11: Supabase Migration & Multi-User Backend
 **Goal**: The app moves from local-only AsyncStorage to Supabase as the backend — with auth (email/password + biometric), encrypted health data storage, server-side rate limiting on the carb estimate proxy, AI consent flow, multi-user data isolation, and data migration from AsyncStorage to cloud — enabling multiple beta users to use the app independently
 **Depends on**: Phase 9 (pre-beta polish), Phase 10 (UI library), Phase 10.5 (MemStack) — all complete
-**Requirements**: TBD
+**Requirements**: SUPA-01, SUPA-02, SUPA-03, SUPA-04, SUPA-05, SUPA-06, SUPA-07, SUPA-08
 **Success Criteria** (what must be TRUE):
   1. Users can sign up and sign in with email/password — biometric unlock (Face ID / fingerprint) available after first login
   2. All health data (glucose, meals, insulin, HbA1c) stored in Supabase PostgreSQL with row-level security — each user sees only their own data
   3. Health data encrypted at rest (GDPR Article 9 special category data compliance)
-  4. Server-side rate limiting on `/api/carb-estimate` proxy (IP-based sliding window, 10 req/day) — client-side bypass eliminated
+  4. Server-side rate limiting on `/api/carb-estimate` proxy (JWT-based, 10 req/day/user) — client-side bypass eliminated
   5. AI consent modal shown before first carb estimate: "Your photo is sent to Anthropic's Claude API for carb estimation and is not stored by them" — one-tap accept, persisted
-  6. Existing AsyncStorage data migrated to Supabase on first login — migration is idempotent and preserves all historical meals, insulin logs, equipment profiles, and consent records
+  6. Existing AsyncStorage data migrated to Supabase via manual Settings button — migration is idempotent and preserves all historical meals, insulin logs, equipment profiles, and consent records
   7. Data sharing toggle enforced server-side — when user turns off, their data is excluded from any aggregation queries
   8. HelpScreen copy updated to accurately reflect that photos pass through Anthropic's servers for carb estimation
-**Plans**: TBD
+**Plans**: 8 plans
+
+Plans:
+- [ ] 11-01-PLAN.md — Wave 1: Pre-migration refactor — consolidate AsyncStorage calls from App.tsx and HomeScreen.tsx into storage.ts
+- [ ] 11-02-PLAN.md — Wave 1: Supabase client setup (LargeSecureStore adapter), schema SQL (9 tables + RLS), TypeScript row types, polyfill imports
+- [ ] 11-03-PLAN.md — Wave 1: Server-side rate limit on /api/carb-estimate (JWT auth + Postgres counter) in bolusbrain-landing repo
+- [ ] 11-04-PLAN.md — Wave 2: AuthContext (session + signIn/signUp/signOut), LoginScreen, SignUpScreen, auth-gated navigation in App.tsx
+- [ ] 11-05-PLAN.md — Wave 3: Biometric unlock (expo-local-authentication + expo-secure-store), auto-enable after first login
+- [ ] 11-06-PLAN.md — Wave 4: Idempotent migration runner (chunked upserts, progress UI), Settings "Migrate my data" button, sign-out button, data sharing enforcement
+- [ ] 11-07-PLAN.md — Wave 2: AI consent modal, consent gate in carbEstimate.ts, HelpScreen copy update
+- [ ] 11-08-PLAN.md — Wave 5: Unit tests (migration, consent, crypto guard) + human verification checkpoint on real data
 
 ### Phase 9: Pre-Beta Polish
 **Goal**: The onboarding flow captures data sharing consent and demographic profile before equipment, hypo treatment supports free-text with optional brand/amount, tablet dosing is configurable in settings, history has a long-acting insulin tab with 12-hour glucose curves, help copy reflects anonymised data sharing, and keyboard/navigation bugs are fixed — the app is ready for external beta testers
