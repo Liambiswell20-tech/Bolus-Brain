@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { CurvePoint, fetchGlucoseRange } from './nightscout';
 
-import type { HypoTreatment, UserProfile, TabletDosing } from '../types/equipment';
+import type { HypoTreatment, UserProfile, TabletDosing, EquipmentChangeEntry, DataConsent } from '../types/equipment';
 
 function generateId(): string {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
@@ -705,3 +705,67 @@ export async function migrateLegacySessions(): Promise<void> {
     console.warn('[storage] migrateLegacySessions: failed, will retry on next launch', err);
   }
 }
+
+// --- onboarding & consent helpers (Plan 11-01) ---
+
+const DATA_SHARING_ONBOARDING_KEY = 'data_sharing_onboarding_completed';
+const ABOUT_ME_COMPLETED_KEY = 'about_me_completed';
+const EQUIPMENT_CHANGELOG_KEY = 'equipment_changelog';
+
+export async function loadOnboardingFlag(key: string): Promise<boolean> {
+  try {
+    const val = await AsyncStorage.getItem(key);
+    return val === 'true';
+  } catch {
+    console.warn('[storage] loadOnboardingFlag: getItem failed', key);
+    return false;
+  }
+}
+
+export async function loadEquipmentChangelog(): Promise<EquipmentChangeEntry[]> {
+  try {
+    const raw = await AsyncStorage.getItem(EQUIPMENT_CHANGELOG_KEY);
+    if (!raw) return [];
+    return JSON.parse(raw) as EquipmentChangeEntry[];
+  } catch {
+    console.warn('[storage] loadEquipmentChangelog: getItem/parse failed', EQUIPMENT_CHANGELOG_KEY);
+    return [];
+  }
+}
+
+const DATA_CONSENT_KEY_STORAGE = 'data_consent';
+
+export async function loadDataConsentRaw(): Promise<DataConsent | null> {
+  try {
+    const raw = await AsyncStorage.getItem(DATA_CONSENT_KEY_STORAGE);
+    if (!raw) return null;
+    return JSON.parse(raw) as DataConsent;
+  } catch {
+    console.warn('[storage] loadDataConsentRaw: getItem/parse failed', DATA_CONSENT_KEY_STORAGE);
+    return null;
+  }
+}
+
+export async function saveDataConsent(consent: DataConsent): Promise<void> {
+  await AsyncStorage.setItem(DATA_CONSENT_KEY_STORAGE, JSON.stringify(consent));
+}
+
+export async function saveHypoTreatment(treatment: HypoTreatment): Promise<void> {
+  const existing = await loadHypoTreatments();
+  await AsyncStorage.setItem(HYPO_TREATMENTS_KEY, JSON.stringify([...existing, treatment]));
+}
+
+export const STORAGE_KEYS = {
+  MEALS: MEALS_KEY,
+  SESSIONS: SESSIONS_KEY,
+  INSULIN_LOGS: INSULIN_LOGS_KEY,
+  GLUCOSE_STORE: GLUCOSE_STORE_KEY,
+  HBA1C_CACHE: HBA1C_CACHE_KEY,
+  HYPO_TREATMENTS: HYPO_TREATMENTS_KEY,
+  USER_PROFILE: USER_PROFILE_KEY,
+  TABLET_DOSING: TABLET_DOSING_KEY,
+  EQUIPMENT_CHANGELOG: EQUIPMENT_CHANGELOG_KEY,
+  DATA_CONSENT: DATA_CONSENT_KEY_STORAGE,
+  DATA_SHARING_ONBOARDING: DATA_SHARING_ONBOARDING_KEY,
+  ABOUT_ME_COMPLETED: ABOUT_ME_COMPLETED_KEY,
+} as const;
