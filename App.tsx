@@ -1,5 +1,4 @@
 import "./global.css";
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { DefaultTheme, NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useFonts, Outfit_400Regular, Outfit_600SemiBold } from '@expo-google-fonts/outfit';
@@ -28,7 +27,7 @@ import AccountScreen from './src/screens/AccountScreen';
 import HelpScreen from './src/screens/HelpScreen';
 import { COLORS } from './src/theme';
 import type { InsulinLogType } from './src/services/storage';
-import { migrateLegacySessions, migrateTabletDosing } from './src/services/storage';
+import { migrateLegacySessions, migrateTabletDosing, loadOnboardingFlag, loadEquipmentChangelog, loadHypoTreatments, fetchAndStoreHypoRecoveryCurve } from './src/services/storage';
 
 export type RootStackParamList = {
   DataSharingOnboarding: undefined;
@@ -88,19 +87,18 @@ export default function App() {
   useEffect(() => {
     async function checkOnboarding() {
       try {
-        const dsCompleted = await AsyncStorage.getItem('data_sharing_onboarding_completed');
-        if (dsCompleted !== 'true') {
+        const dsCompleted = await loadOnboardingFlag('data_sharing_onboarding_completed');
+        if (!dsCompleted) {
           setInitialRoute('DataSharingOnboarding');
           return;
         }
-        const amCompleted = await AsyncStorage.getItem('about_me_completed');
-        if (amCompleted !== 'true') {
+        const amCompleted = await loadOnboardingFlag('about_me_completed');
+        if (!amCompleted) {
           setInitialRoute('AboutMeOnboarding');
           return;
         }
-        const equipRaw = await AsyncStorage.getItem('equipment_changelog');
-        const entries = equipRaw ? JSON.parse(equipRaw) : [];
-        if (!Array.isArray(entries) || entries.length === 0) {
+        const entries = await loadEquipmentChangelog();
+        if (entries.length === 0) {
           setInitialRoute('EquipmentOnboarding');
           return;
         }
@@ -155,25 +153,15 @@ export default function App() {
 
     // Hypo recovery curve fetch — for treatments where 60min window has elapsed
     try {
-      const HYPO_TREATMENTS_KEY = 'hypo_treatments';
-      const raw = await AsyncStorage.getItem(HYPO_TREATMENTS_KEY);
-      if (!raw) return;
-      const treatments: Array<{ id: string; logged_at: string; glucose_readings_after?: number[] }> = JSON.parse(raw);
+      const treatments = await loadHypoTreatments();
       const now = Date.now();
       const pending = treatments.filter(t =>
         t.glucose_readings_after === undefined &&
         now - new Date(t.logged_at).getTime() > 60 * 60 * 1000
       );
-      if (pending.length === 0) return;
       for (const treatment of pending) {
-        try {
-          const startMs = new Date(treatment.logged_at).getTime();
-          const endMs = startMs + 60 * 60 * 1000;
-          const readings = await fetchGlucoseRange(startMs, endMs);
-          treatment.glucose_readings_after = readings.map(r => r.mmol);
-        } catch {}
+        await fetchAndStoreHypoRecoveryCurve(treatment.id).catch(() => {});
       }
-      await AsyncStorage.setItem(HYPO_TREATMENTS_KEY, JSON.stringify(treatments));
     } catch (err) {
       console.warn('[App] hypo recovery fetch failed (non-fatal)', err);
     }
