@@ -1,15 +1,15 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.0
+milestone: v0.7
 milestone_name: milestone
 status: unknown
-stopped_at: Completed 09-06-PLAN.md
-last_updated: "2026-04-08T22:05:35.504Z"
+stopped_at: Completed 11-03-PLAN.md
+last_updated: "2026-04-16T22:24:12.812Z"
 progress:
-  total_phases: 10
+  total_phases: 12
   completed_phases: 5
-  total_plans: 39
-  completed_plans: 35
+  total_plans: 47
+  completed_plans: 36
 ---
 
 # Project State
@@ -19,12 +19,12 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-18)
 
 **Core value:** Show the user what happened last time, clearly and honestly — so they can make their own informed decisions, never be told what to do.
-**Current focus:** Phase 09 — pre-beta-polish
+**Current focus:** Phase 11 — supabase-migration-multi-user-backend
 
 ## Current Position
 
-Phase: 10
-Plan: Not started
+Phase: 11 (supabase-migration-multi-user-backend) — EXECUTING
+Plan: 2 of 8
 
 ## Performance Metrics
 
@@ -77,6 +77,7 @@ Plan: Not started
 | Phase 09 P01 | 4 | 2 tasks | 5 files |
 | Phase 09 P02 | 8 | 2 tasks | 3 files |
 | Phase 09 P06 | 6 | 2 tasks | 7 files |
+| Phase 11 P03 | 2 | 1 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -145,6 +146,9 @@ Key constraints affecting this milestone:
 - [Phase 09]: HbA1c input uses decimal-pad keyboard with free text parsed via parseFloat (not picker-constrained)
 - [Phase 09]: InsulinLogScreen inner View wrapped in ScrollView for keyboard handling consistency
 - [Phase 09]: All screen files with hardcoded #000 backgrounds fixed to use COLORS.background token (7 files total)
+- [Phase 11]: Used getUser(jwt) for server-side JWT validation (not getSession) per Supabase best practices
+- [Phase 11]: Reservation pattern: INSERT before Anthropic call to prevent retry storms even if API fails
+- [Phase 11]: Graceful degradation: carb-estimate proxy works without JWT during rollout transition
 
 ### Roadmap Evolution
 
@@ -164,6 +168,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-08T21:27:33.349Z
-Stopped at: Completed 09-06-PLAN.md
+Last session: 2026-04-16T22:24:12.806Z
+Stopped at: Completed 11-03-PLAN.md
 Resume file: None
