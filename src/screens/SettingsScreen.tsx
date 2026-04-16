@@ -16,6 +16,7 @@ import {
   View,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { supabase } from '../../lib/supabase';
 import { loadSettings, saveSettings, AppSettings } from '../services/settings';
 import { loadTabletDosing, saveTabletDosing } from '../services/storage';
 import { getCurrentEquipmentProfile, changeEquipment } from '../utils/equipmentProfile';
@@ -99,6 +100,10 @@ export default function SettingsScreen() {
   const [consent, setConsent] = useState<DataConsent>({ consented: false, version: CURRENT_CONSENT_VERSION });
   const [reConsentModalVisible, setReConsentModalVisible] = useState(false);
 
+  // AI consent state (Supabase ai_consent_records)
+  const [aiConsentEnabled, setAiConsentEnabled] = useState(false);
+  const [aiConsentLoading, setAiConsentLoading] = useState(true);
+
   // ─── Equipment profile state ────────────────────────────────────────────────
   const [activeProfile, setActiveProfile] = useState<{
     rapidInsulinBrand: string;
@@ -152,6 +157,52 @@ export default function SettingsScreen() {
     setActiveProfile(profile);
   }, []);
 
+  // ─── AI consent helpers (Supabase ai_consent_records) ──────────────────────
+
+  async function loadAIConsent() {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) { setAiConsentLoading(false); return; }
+      const { data } = await supabase
+        .from('ai_consent_records')
+        .select('revoked_at')
+        .eq('user_id', user.id)
+        .eq('version', '1.0')
+        .maybeSingle();
+      setAiConsentEnabled(!!data && data.revoked_at === null);
+    } catch {
+      setAiConsentEnabled(false);
+    } finally {
+      setAiConsentLoading(false);
+    }
+  }
+
+  async function handleAIConsentToggle(newValue: boolean) {
+    setAiConsentEnabled(newValue);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      if (newValue) {
+        // Re-enable: clear revoked_at, set new accepted_at
+        await supabase.from('ai_consent_records').upsert({
+          user_id: user.id,
+          version: '1.0',
+          accepted_at: new Date().toISOString(),
+          revoked_at: null,
+        }, { onConflict: 'user_id,version' });
+      } else {
+        // Revoke: set revoked_at timestamp
+        await supabase.from('ai_consent_records')
+          .update({ revoked_at: new Date().toISOString() })
+          .eq('user_id', user.id)
+          .eq('version', '1.0');
+      }
+    } catch (err) {
+      console.warn('[Settings] AI consent toggle failed', err);
+      setAiConsentEnabled(!newValue); // Revert on failure
+    }
+  }
+
   // ─── Main load ──────────────────────────────────────────────────────────────
 
   const load = useCallback(async () => {
@@ -169,6 +220,7 @@ export default function SettingsScreen() {
     await loadEquipment();
     const loadedTablets = await loadTabletDosing();
     setTablets(loadedTablets);
+    await loadAIConsent();
   }, [loadEquipment]);
 
   useFocusEffect(useCallback(() => { load(); }, [load]));
@@ -409,6 +461,23 @@ export default function SettingsScreen() {
                 onCheckedChange={handleConsentToggle}
               />
             </View>
+            {!aiConsentLoading && (
+              <>
+                <View style={styles.divider} />
+                <View style={styles.consentRow}>
+                  <View style={styles.consentLabelGroup}>
+                    <Text style={styles.consentLabel}>AI carb estimation consent</Text>
+                    <Text style={styles.consentHint}>
+                      Allow food photos to be sent to Anthropic's Claude API for carb estimation. Photos are not stored.
+                    </Text>
+                  </View>
+                  <Switch
+                    checked={aiConsentEnabled}
+                    onCheckedChange={handleAIConsentToggle}
+                  />
+                </View>
+              </>
+            )}
           </View>
 
           {/* Save */}

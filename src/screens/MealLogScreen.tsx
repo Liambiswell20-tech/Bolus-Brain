@@ -24,7 +24,9 @@ import {
   estimateCarbsFromPhoto,
   getRemainingEstimates,
   RateLimitError,
+  ConsentRequiredError,
 } from '../services/carbEstimate';
+import AIConsentModal from './AIConsentModal';
 import type { SessionMatch, MatchSummary } from '../services/matching';
 import { findSimilarSessions } from '../services/matching';
 import { getCurrentEquipmentProfile } from '../utils/equipmentProfile';
@@ -56,6 +58,9 @@ export default function MealLogScreen() {
   const [carbEstimate, setCarbEstimate] = useState<string | null>(null);
   const [estimatesLeft, setEstimatesLeft] = useState<number>(10);
   const [rateLimitHit, setRateLimitHit] = useState(false);
+
+  // AI consent modal state
+  const [showAIConsent, setShowAIConsent] = useState(false);
 
   // Live matching state (Phase 3)
   const [liveMatches, setLiveMatches] = useState<SessionMatch[]>([]);
@@ -179,6 +184,10 @@ export default function MealLogScreen() {
       setEstimatesLeft(remaining);
       if (remaining <= 0) setRateLimitHit(true);
     } catch (err) {
+      if (err instanceof ConsentRequiredError) {
+        setShowAIConsent(true);
+        return;
+      }
       if (err instanceof RateLimitError) {
         setRateLimitHit(true);
       } else {
@@ -190,6 +199,12 @@ export default function MealLogScreen() {
     } finally {
       setEstimating(false);
     }
+  }
+
+  function handleConsentAccepted() {
+    setShowAIConsent(false);
+    // Retry the carb estimate now that consent is granted
+    handleEstimateCarbs();
   }
 
   async function handleSave() {
@@ -495,6 +510,11 @@ export default function MealLogScreen() {
         sessions={sheetSessions}
         visible={sheetVisible}
         onClose={() => setSheetVisible(false)}
+      />
+      <AIConsentModal
+        visible={showAIConsent}
+        onAccept={handleConsentAccepted}
+        onDecline={() => setShowAIConsent(false)}
       />
     </KeyboardAvoidingView>
   );
