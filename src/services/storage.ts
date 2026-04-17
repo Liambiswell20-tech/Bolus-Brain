@@ -234,12 +234,75 @@ export interface GlucoseResponse {
 
 export type SessionConfidence = 'high' | 'medium' | 'low';
 
+// --- Session Grouping V2 types (Phase A) ---
+
+export type ClassificationBucket = 'quick_sugar' | 'simple_snack' | 'mixed_meal' | 'fat_heavy';
+export type ClassificationMethod = 'override_keyword' | 'carb_bucket' | 'fallback';
+
+export type SessionEventType =
+  | 'created'
+  | 'extended'
+  | 'dissolved'
+  | 'split'
+  | 'merged'
+  | 'member_added_via_backfill'
+  | 'member_removed_via_delete'
+  | 'member_reassigned_via_edit'
+  | 'correction_attached'
+  | 'hypo_during_session'
+  | 'migration_reassigned';
+
+export interface SessionEventLog {
+  id: string;
+  sessionId: string;
+  eventType: SessionEventType;
+  triggeredByMealId: string | null;
+  beforeState: Record<string, unknown> | null;  // snapshot before mutation
+  afterState: Record<string, unknown> | null;   // snapshot after mutation
+  classificationKeywordsVersion: string | null;
+  triggeredAt: string;  // ISO
+}
+
+export interface SessionCorrection {
+  id: string;
+  sessionId: string;
+  insulinLogId: string;
+  units: number;
+  loggedAt: string;  // ISO
+  createdAt: string; // ISO
+}
+
+export interface SessionContextEvent {
+  id: string;
+  sessionId: string;
+  eventType: string;     // e.g. 'exercise', 'stress', 'illness'
+  description: string;
+  loggedAt: string;  // ISO
+  createdAt: string; // ISO
+}
+
+export interface SessionHypoAnnotation {
+  id: string;
+  sessionId: string;
+  hypoTreatmentId: string;
+  glucoseAtEvent: number;  // mmol/L
+  loggedAt: string;  // ISO
+  createdAt: string; // ISO
+}
+
 export interface Session {
   id: string;
   mealIds: string[];          // ordered oldest-first
   startedAt: string;          // ISO — time of first meal in session
   confidence: SessionConfidence;
   glucoseResponse: GlucoseResponse | null;
+  // V2 fields (nullable for backward compat with existing sessions)
+  sessionEnd?: string | null;          // ISO — latest member timestamp + digestion window
+  totalCarbs?: number | null;
+  totalInsulin?: number | null;
+  curveCorrected?: boolean;
+  hypoDuringSession?: boolean;
+  endedElevated?: boolean;
 }
 
 export interface Meal {
@@ -256,6 +319,20 @@ export interface Meal {
   // Do NOT include insulin_brand or delivery_method in updateMeal() changes — they must never be edited
   insulin_brand?: string;
   delivery_method?: string;
+  // V2 classification fields (nullable for backward compat with existing meals)
+  classificationBucket?: ClassificationBucket | null;
+  classificationMethod?: ClassificationMethod | null;
+  classificationMatchedKeyword?: string | null;
+  classificationKeywordsVersion?: string | null;
+  digestionWindowMinutes?: number | null;
+  matchingKey?: string | null;
+  matchingKeyVersion?: number | null;
+  overlapDetectedAtLog?: string[] | null;  // meal IDs that overlapped at log time
+  classificationSnapshot?: ClassificationBucket | null;  // frozen at log time, never changes
+  returnToBaselineMinutes?: number | null;
+  endedElevated?: boolean;
+  endedLow?: boolean;
+  cgmCoveragePercent?: number | null;
 }
 
 export interface SessionWithMeals extends Session {

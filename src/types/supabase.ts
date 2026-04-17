@@ -20,6 +20,20 @@ export interface MealRow {
   glucose_response: Record<string, unknown> | null;
   insulin_brand: string | null;
   delivery_method: string | null;
+  // V2 session grouping fields
+  classification_bucket: string | null;
+  classification_method: string | null;
+  classification_matched_keyword: string | null;
+  classification_keywords_version: string | null;
+  digestion_window_minutes: number | null;
+  matching_key: string | null;
+  matching_key_version: number | null;
+  overlap_detected_at_log: string[] | null;
+  classification_snapshot: string | null;
+  return_to_baseline_minutes: number | null;
+  ended_elevated: boolean | null;
+  ended_low: boolean | null;
+  cgm_coverage_percent: number | null;
   created_at: string;
   updated_at: string;
 }
@@ -122,4 +136,49 @@ export interface UserProfileRow {
   completed_at: string | null;
   created_at: string;
   updated_at: string;
+}
+
+// --- Session Grouping V2 tables ---
+
+export interface SessionEventLogRow {
+  id: string;
+  user_id: string;
+  session_id: string;
+  event_type: string;
+  triggered_by_meal_id: string | null;
+  before_state: Record<string, unknown> | null;
+  after_state: Record<string, unknown> | null;
+  classification_keywords_version: string | null;
+  triggered_at: string;
+  created_at: string;
+}
+
+export interface SessionCorrectionRow {
+  id: string;
+  user_id: string;
+  session_id: string;
+  insulin_log_id: string;
+  units: number;
+  logged_at: string;
+  created_at: string;
+}
+
+export interface SessionContextEventRow {
+  id: string;
+  user_id: string;
+  session_id: string;
+  event_type: string;
+  description: string;
+  logged_at: string;
+  created_at: string;
+}
+
+export interface SessionHypoAnnotationRow {
+  id: string;
+  user_id: string;
+  session_id: string;
+  hypo_treatment_id: string;
+  glucose_at_event: number;
+  logged_at: string;
+  created_at: string;
 }
