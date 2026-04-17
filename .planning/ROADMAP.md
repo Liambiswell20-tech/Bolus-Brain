@@ -140,7 +140,7 @@ Phases 1 -> 2 -> 3 -> 4 -> 5 execute in numeric order.
 | 9. Pre-Beta Polish | 7/7 | Complete   | 2026-04-08 |
 | 10. UI Component Library & Charting | —/— | Complete   | 2026-04-14 |
 | 10.5. MemStack Selective Install | —/— | Complete   | 2026-04-14 |
-| 11. Supabase Migration & Multi-User Backend | 5/8 | In Progress|  |
+| 11. Supabase Migration & Multi-User Backend | 6/8 | In Progress|  |
 
 ### Phase 7: Premium features and monetization strategy
 
@@ -172,7 +172,7 @@ Plans:
 - [x] 11-02-PLAN.md — Wave 1: Supabase client setup (LargeSecureStore adapter), schema SQL (9 tables + RLS), TypeScript row types, polyfill imports
 - [x] 11-03-PLAN.md — Wave 1: Server-side rate limit on /api/carb-estimate (JWT auth + Postgres counter) in bolusbrain-landing repo
 - [x] 11-04-PLAN.md — Wave 2: AuthContext (session + signIn/signUp/signOut), LoginScreen, SignUpScreen, auth-gated navigation in App.tsx
-- [ ] 11-05-PLAN.md — Wave 3: Biometric unlock (expo-local-authentication + expo-secure-store), auto-enable after first login
+- [x] 11-05-PLAN.md — Wave 3: Biometric unlock (expo-local-authentication + expo-secure-store), auto-enable after first login
 - [ ] 11-06-PLAN.md — Wave 4: Idempotent migration runner (chunked upserts, progress UI), Settings "Migrate my data" button, sign-out button, data sharing enforcement
 - [x] 11-07-PLAN.md — Wave 2: AI consent modal, consent gate in carbEstimate.ts, HelpScreen copy update
 - [ ] 11-08-PLAN.md — Wave 5: Unit tests (migration, consent, crypto guard) + human verification checkpoint on real data
