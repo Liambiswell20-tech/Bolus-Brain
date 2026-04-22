@@ -845,7 +845,7 @@ export async function fetchAndStoreCurveForMeal(mealId: string): Promise<void> {
   if (!meal) return;
 
   const fromMs = new Date(meal.loggedAt).getTime();
-  const windowMs = (meal.digestionWindowMinutes ?? 180) * 60 * 1000;
+  const windowMs = (meal.digestionWindowMinutes || 180) * 60 * 1000;
   const toMs = fromMs + windowMs;
   const nowMs = Date.now();
 
