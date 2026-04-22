@@ -554,13 +554,13 @@ function LongActingTab({ insulinLogs, onRefresh }: { insulinLogs: InsulinLog[]; 
 // --- screen ---
 
 type ListRow =
-  | { type: 'today-meal';      meal: Meal; sessionId: string }
+  | { type: 'today-meal';      meal: Meal; sessionId: string; session: SessionWithMeals | null }
   | { type: 'today-session';   session: SessionWithMeals }
   | { type: 'today-insulin';   data: InsulinLog }
   | { type: 'today-hypo';      data: HypoTreatment }
   | { type: 'day-header';      dateKey: string; label: string; count: number; expanded: boolean }
   | { type: 'session-subhdr';  session: SessionWithMeals; dateKey: string }
-  | { type: 'past-meal';       meal: Meal; dateKey: string }
+  | { type: 'past-meal';       meal: Meal; dateKey: string; session: SessionWithMeals | null }
   | { type: 'past-insulin';    data: InsulinLog; dateKey: string }
   | { type: 'past-hypo';       data: HypoTreatment; dateKey: string };
 
@@ -710,7 +710,7 @@ export default function MealHistoryScreen() {
           rows.push({ type: 'today-session', session: s });
         }
         for (const meal of s.meals) {
-          rows.push({ type: 'today-meal', meal, sessionId: s.id });
+          rows.push({ type: 'today-meal', meal, sessionId: s.id, session: s.meals.length >= 2 ? s : null });
         }
       } else if (entry.kind === 'hypo') {
         rows.push({ type: 'today-hypo', data: entry.treatment });
@@ -755,7 +755,7 @@ export default function MealHistoryScreen() {
               rows.push({ type: 'session-subhdr', session: s, dateKey: key });
             }
             for (const meal of s.meals) {
-              rows.push({ type: 'past-meal', meal, dateKey: key });
+              rows.push({ type: 'past-meal', meal, dateKey: key, session: s.meals.length >= 2 ? s : null });
             }
           } else if (entry.kind === 'hypo') {
             rows.push({ type: 'past-hypo', data: entry.treatment, dateKey: key });
@@ -827,27 +827,33 @@ export default function MealHistoryScreen() {
                 />
               );
             }
-            if (row.type === 'session-subhdr') {
+            if (row.type === 'session-subhdr' || row.type === 'today-session') {
+              const s = row.session;
+              const peak = s.glucoseResponse?.peakGlucose ?? null;
+              const peakTime = s.glucoseResponse?.readings
+                ? (() => {
+                    const peakReading = s.glucoseResponse!.readings.reduce((a, b) => b.mmol > a.mmol ? b : a, s.glucoseResponse!.readings[0]);
+                    return peakReading ? new Date(peakReading.date).toISOString() : null;
+                  })()
+                : null;
               return (
                 <SessionSubHeader
-                  mealCount={row.session.meals.length}
-                  startedAt={row.session.startedAt}
-                />
-              );
-            }
-            if (row.type === 'today-session') {
-              return (
-                <SessionSubHeader
-                  mealCount={row.session.meals.length}
-                  startedAt={row.session.startedAt}
+                  mealCount={s.meals.length}
+                  startedAt={s.startedAt}
+                  totalCarbs={s.totalCarbs ?? null}
+                  peakGlucose={peak}
+                  peakTime={peakTime}
                 />
               );
             }
             if (row.type === 'today-meal' || row.type === 'past-meal') {
+              const isMultiMealSession = row.session != null;
               return (
                 <MealHistoryCard
                   meal={row.meal}
                   onPress={() => handleCardPress(row.meal)}
+                  session={row.session ?? undefined}
+                  showAccentBar={isMultiMealSession}
                 />
               );
             }

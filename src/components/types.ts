@@ -4,7 +4,7 @@
 // Phase 4: MealHistoryCardProps and MealBottomSheetProps added.
 // Phase 8: HypoTreatmentSheetProps added (B2B-06).
 
-import type { GlucoseResponse, Meal, SessionWithMeals } from '../services/storage';
+import type { GlucoseResponse, Meal, Session, SessionWithMeals } from '../services/storage';
 import type { HypoTreatment } from '../types/equipment';
 import type { OutcomeBadge } from '../utils/outcomeClassifier';
 import type { MatchSummary } from '../services/matching';
@@ -37,9 +37,13 @@ export interface MatchingSlotProps {
 // Simplified tap-to-open card.
 // Tapping calls onPress — caller is responsible for opening MealBottomSheet.
 // Per Phase 4 CONTEXT.md Decision 7: expand/collapse removed; bottom sheet pattern used instead.
+// Phase J: added session prop for chip determination + accent bar.
 export interface MealHistoryCardProps {
   meal: Meal;
   onPress: () => void;  // caller opens MealBottomSheet
+  // V2 fields (Phase J — Section 8.3). Optional for rollback safety.
+  session?: Session | null;
+  showAccentBar?: boolean;
 }
 
 // ---- MealBottomSheet ----
@@ -76,9 +80,13 @@ export interface DayGroupHeaderProps {
 
 // ---- SessionSubHeader ----
 // Sub-header shown inside a day group when a session contains 2+ meals (per D-07).
-// Format: "Session — X meals, H:MM PM"
-// Only rendered when mealCount >= 2 (per D-07); solo meals show no sub-header (per D-07).
+// Phase J: updated to spec Section 8.1 session row with totals + accent bar.
+// V2 fields (totalCarbs, peakGlucose, peakTime) are optional for V1 rollback safety.
 export interface SessionSubHeaderProps {
-  mealCount: number;     // shown as "X meals"
+  mealCount: number;     // shown as "X meals" (V1 fallback)
   startedAt: string;     // ISO — formatted as H:MM PM
+  // V2 fields (Phase J — Section 8.1)
+  totalCarbs?: number | null;
+  peakGlucose?: number | null;
+  peakTime?: string | null;
 }

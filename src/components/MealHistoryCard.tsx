@@ -1,3 +1,11 @@
+/**
+ * MealHistoryCard — Phase J update (Session Grouping Spec Section 8.1, 8.3)
+ *
+ * Added: confidence/contamination/curve chips via getMealChips(),
+ * shared accent bar for session member visual grouping.
+ * All V2 fields optional — V1 meals render a clean card (no chips, no bar).
+ */
+
 import React from 'react';
 import {
   Image,
@@ -15,63 +23,87 @@ import { formatDate } from '../utils/formatDate';
 import { OutcomeBadge } from './OutcomeBadge';
 import { Card } from '~/components/ui/card';
 import { Badge } from '~/components/ui/badge';
+import { getMealChips, MealChipRow } from './MealChips';
+import { COLORS } from '../theme';
 import type { MealHistoryCardProps } from './types';
 
-export function MealHistoryCard({ meal, onPress }: MealHistoryCardProps) {
+export function MealHistoryCard({ meal, onPress, session, showAccentBar }: MealHistoryCardProps) {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
   const badge = classifyOutcome(meal.glucoseResponse);
+  const chips = getMealChips(meal, session ?? null);
 
   return (
-    <Card style={styles.card}>
-      {/* Edit button row */}
-      <View style={styles.editRow}>
-        <View style={{ flex: 1 }} />
-        <Pressable
-          style={styles.editBtn}
-          onPress={() => navigation.navigate('EditMeal', { mealId: meal.id })}
-          hitSlop={8}
-        >
-          <Text style={styles.editBtnText}>Edit</Text>
-        </Pressable>
-      </View>
+    <View style={showAccentBar ? accentStyles.wrapper : undefined}>
+      {showAccentBar && <View style={accentStyles.bar} />}
+      <Card style={[styles.card, showAccentBar && accentStyles.cardInset]}>
+        {/* Edit button row */}
+        <View style={styles.editRow}>
+          <View style={{ flex: 1 }} />
+          <Pressable
+            style={styles.editBtn}
+            onPress={() => navigation.navigate('EditMeal', { mealId: meal.id })}
+            hitSlop={8}
+          >
+            <Text style={styles.editBtnText}>Edit</Text>
+          </Pressable>
+        </View>
 
-      {/* Tappable header — calls onPress to open MealBottomSheet */}
-      <Pressable onPress={onPress} style={styles.mealHeader}>
-        {meal.photoUri ? (
-          <Image source={{ uri: meal.photoUri }} style={styles.thumbnail} />
-        ) : (
-          <View style={[styles.thumbnail, styles.noPhoto]}>
-            <Text style={styles.noPhotoIcon}>🍽</Text>
-          </View>
-        )}
-        <View style={styles.mealMeta}>
-          <View style={styles.mealTitleRow}>
-            <Text style={styles.mealName} numberOfLines={1}>{meal.name}</Text>
-            {meal.insulinUnits > 0 && (
-              <Badge className="border-0" style={styles.insulinBadge}>
-                <Text style={styles.insulinBadgeText}>{meal.insulinUnits}u</Text>
-              </Badge>
-            )}
-            <OutcomeBadge badge={badge} size="small" />
-          </View>
-          <Text style={styles.mealDate}>{formatDate(meal.loggedAt)}</Text>
-          {meal.carbsEstimated != null && (
-            <Text style={styles.carbEstimate}>~{meal.carbsEstimated}g carbs (AI estimate)</Text>
-          )}
-          {meal.startGlucose !== null && (
-            <View style={styles.startGlucoseRow}>
-              <Text style={[styles.startGlucoseValue, { color: glucoseColor(meal.startGlucose) }]}>
-                {meal.startGlucose.toFixed(1)}
-              </Text>
-              <Text style={styles.startGlucoseUnit}> mmol/L before</Text>
+        {/* Tappable header — calls onPress to open MealBottomSheet */}
+        <Pressable onPress={onPress} style={styles.mealHeader}>
+          {meal.photoUri ? (
+            <Image source={{ uri: meal.photoUri }} style={styles.thumbnail} />
+          ) : (
+            <View style={[styles.thumbnail, styles.noPhoto]}>
+              <Text style={styles.noPhotoIcon}>{'\uD83C\uDF7D'}</Text>
             </View>
           )}
-        </View>
-      </Pressable>
-    </Card>
+          <View style={styles.mealMeta}>
+            <View style={styles.mealTitleRow}>
+              <Text style={styles.mealName} numberOfLines={1}>{meal.name}</Text>
+              {meal.insulinUnits > 0 && (
+                <Badge className="border-0" style={styles.insulinBadge}>
+                  <Text style={styles.insulinBadgeText}>{meal.insulinUnits}u</Text>
+                </Badge>
+              )}
+              <OutcomeBadge badge={badge} size="small" />
+            </View>
+            <Text style={styles.mealDate}>{formatDate(meal.loggedAt)}</Text>
+            {meal.carbsEstimated != null && (
+              <Text style={styles.carbEstimate}>~{meal.carbsEstimated}g carbs (AI estimate)</Text>
+            )}
+            {meal.startGlucose !== null && (
+              <View style={styles.startGlucoseRow}>
+                <Text style={[styles.startGlucoseValue, { color: glucoseColor(meal.startGlucose) }]}>
+                  {meal.startGlucose.toFixed(1)}
+                </Text>
+                <Text style={styles.startGlucoseUnit}> mmol/L before</Text>
+              </View>
+            )}
+            {/* Phase J: confidence/contamination/curve chips — Section 8.3 */}
+            <MealChipRow chips={chips} />
+          </View>
+        </Pressable>
+      </Card>
+    </View>
   );
 }
+
+// Accent bar styles for session member visual grouping (Section 8.1)
+const accentStyles = StyleSheet.create({
+  wrapper: {
+    flexDirection: 'row',
+  },
+  bar: {
+    width: 3,
+    borderRadius: 1.5,
+    backgroundColor: COLORS.blue,
+    marginRight: 8,
+  },
+  cardInset: {
+    flex: 1,
+  },
+});
 
 const styles = StyleSheet.create({
   card: { backgroundColor: '#1C1C1E', borderRadius: 16, padding: 16, gap: 8 },
