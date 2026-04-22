@@ -56,7 +56,8 @@ Full project brief: `C:\Users\Liamb\OneDrive\Desktop\Bolus Brain Project\CLAUDE.
 - **Session Grouping Phase F (Confidence Scoring + CGM Coverage): COMPLETE** (2026-04-22) — computeMealConfidence(), computeSessionConfidence(), computeCgmCoverage(), computeEndedElevated(), computeEndedLow(), computeReturnToBaselineMinutes() in src/services/confidenceScoring.ts. Pure functions, no storage writes. 47 tests.
 - **Session Grouping Phase G (Pattern Matching + matching_key Overhaul): COMPLETE** (2026-04-22) — findSoloPatterns(), findSessionPatterns(), findPatterns(), PatternCache in src/services/patternMatching.ts. Uses stored matching_key (not runtime fingerprint). Solo vs session separation, N-based thresholds (0/1-2/3+), confidence filtering (HIGH counted, MEDIUM muted, LOW excluded), 5-min cache. matching.ts deprecated. 22 tests.
 - **Session Grouping Phase H (Integration): COMPLETE** (2026-04-22) — V2 saveMeal/updateMeal/deleteMeal rewrite, V1 rollback layer, 20 integration tests. Commits `104a490`, `9d98007`.
-- **Next: Session Grouping Phase I** — Data Migration for Existing Meals
+- **Session Grouping Phase I (Data Migration): COMPLETE** (2026-04-22) — migrateToSessionGroupingV2(), rollbackMigration() in src/services/sessionMigration.ts. Idempotent, pre-migration backup, audit trail. 20 tests. Commit `4f44660`.
+- **Next: Session Grouping Phase J** — UI: History Cards + Session-Level Row
 - Authoritative spec: [Session Grouping Design Spec (Notion)](https://www.notion.so/34451b52df6e811abfcbd385555158d8)
 - GSD project initialized — see `.planning/` for roadmap and requirements
 - Do NOT build prediction engine until 50+ meals logged
