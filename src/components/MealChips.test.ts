@@ -58,12 +58,18 @@ function chipVariants(chips: ChipConfig[]): string[] {
 // ---------------------------------------------------------------------------
 
 describe('getMealChips: solo HIGH confidence', () => {
-  it('returns no chips for a HIGH confidence solo meal', () => {
+  it('returns only classification chip for a HIGH confidence solo meal', () => {
     const meal = makeMeal({
       classificationMethod: 'carb_bucket',
+      classificationBucket: 'mixed_meal',
+      digestionWindowMinutes: 180,
       cgmCoveragePercent: 90,
     });
-    expect(getMealChips(meal, null)).toEqual([]);
+    const chips = getMealChips(meal, null);
+    expect(chips).toHaveLength(1);
+    expect(chips[0].label).toBe('Mixed meal \u00B7 180min');
+    expect(chips[0].variant).toBe('neutral');
+    expect(chips[0].infoKey).toBe('classification');
   });
 
   it('returns no chips when V2 fields are absent (V1 rollback safe)', () => {

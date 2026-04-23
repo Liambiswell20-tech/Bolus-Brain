@@ -36,7 +36,19 @@ export interface ChipInfoEntry {
 // Info sheet content — Section 8.3 copy (zero predictive language)
 // ---------------------------------------------------------------------------
 
+const BUCKET_LABELS: Record<string, string> = {
+  quick_sugar: 'Quick sugar',
+  simple_snack: 'Simple snack',
+  mixed_meal: 'Mixed meal',
+  fat_heavy: 'Fat-heavy meal',
+  non_carb: 'Non-carb',
+};
+
 export const CHIP_INFO: Record<string, ChipInfoEntry> = {
+  classification: {
+    title: 'Meal classification',
+    body: 'This meal was classified based on its name and carb content. The classification determines how long the digestion window is tracked for.',
+  },
   sensor_incomplete: {
     title: 'Sensor data incomplete',
     body: 'Less than half the glucose readings were available for this meal\u2019s digestion window. The glucose data shown may not reflect the full picture.',
@@ -66,6 +78,16 @@ export const CHIP_INFO: Record<string, ChipInfoEntry> = {
 export function getMealChips(meal: Meal, session: Session | null): ChipConfig[] {
   const chips: ChipConfig[] = [];
   const isSessionMember = session !== null && meal.sessionId != null;
+
+  // --- Classification chip (bucket + window) ---
+  if (meal.classificationBucket && meal.digestionWindowMinutes) {
+    const bucketLabel = BUCKET_LABELS[meal.classificationBucket] ?? meal.classificationBucket;
+    chips.push({
+      label: `${bucketLabel} \u00B7 ${meal.digestionWindowMinutes}min`,
+      variant: 'neutral',
+      infoKey: 'classification',
+    });
+  }
 
   // --- Confidence / membership chips ---
   if (isSessionMember) {
