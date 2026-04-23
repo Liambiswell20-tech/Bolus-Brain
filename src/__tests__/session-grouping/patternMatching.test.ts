@@ -306,8 +306,8 @@ describe('T-D4: Pattern view excludes LOW-confidence', () => {
 
     // LOW absent from instances
     expect(result.instances.every(i => i.confidence !== 'low')).toBe(true);
-    // Session member absent from solo instances (filtered by sessionId == null)
-    expect(result.instances.length).toBe(3);
+    // Session member included (prefix/session-relaxed matching) but LOW excluded
+    expect(result.instances.length).toBe(4);
   });
 
   it('MEDIUM-confidence meals shown but muted (Section 8.5)', () => {
@@ -392,7 +392,7 @@ describe('T-D5: Session pattern shown when N≥3 sessions', () => {
     expect(result).toBeNull();
   });
 
-  it('solo section is empty when all meals are session members', () => {
+  it('session members appear in solo results (relaxed filter for pre-migration data)', () => {
     const allMeals: Meal[] = [];
     const sessions: SessionWithMeals[] = [];
     for (let i = 0; i < 3; i++) {
@@ -409,11 +409,12 @@ describe('T-D5: Session pattern shown when N≥3 sessions', () => {
 
     const result = findPatterns('chips', allMeals, sessions);
 
-    // Solo: empty (all meals are session members)
-    expect(result.solo.displayMode).toBe('empty');
-    expect(result.solo.highConfidenceCount).toBe(0);
+    // Solo: session members included, shown as MEDIUM (muted)
+    expect(result.solo.displayMode).toBe('summary');
+    expect(result.solo.instances.length).toBe(3);
+    expect(result.solo.instances.every(i => i.isMuted)).toBe(true);
 
-    // Session: present with 3 sessions
+    // Session: also present with 3 sessions
     expect(result.session).not.toBeNull();
     expect(result.session!.sessionCount).toBe(3);
   });
@@ -468,16 +469,16 @@ describe('T-D6: matching_key normalisation', () => {
     expect(result.instances.length).toBe(3);
   });
 
-  it('"chips and mayo" does NOT match "chips" (Section 7.1: mayo preserved)', () => {
+  it('"chips mayo" prefix-matches "chips" (live typing support)', () => {
     // "chips and mayo" → computeMatchingKey → "chips mayo" (conjunction stripped, mayo preserved)
     const chipsOnlyMeal = makeHighSoloMeal('chips', '2026-03-15T12:00:00Z');
     const chipsMayoMeal = makeHighSoloMeal('chips mayo', '2026-03-16T12:00:00Z');
     chipsMayoMeal.matchingKey = 'chips mayo'; // different matching_key
 
     const result = findSoloPatterns('chips', [chipsOnlyMeal, chipsMayoMeal]);
-    // Only 'chips' matches, not 'chips mayo'
-    expect(result.highConfidenceCount).toBe(1);
-    expect(result.instances.length).toBe(1);
+    // Both match: exact "chips" + prefix "chips mayo" starts with "chips "
+    expect(result.highConfidenceCount).toBe(2);
+    expect(result.instances.length).toBe(2);
   });
 
   it('exact matching_key equality required — no fuzzy matching', () => {

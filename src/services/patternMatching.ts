@@ -14,6 +14,7 @@
  */
 import type { Meal, SessionWithMeals, SessionConfidence } from './storage';
 import { computeMealConfidence, computeSessionConfidence } from './confidenceScoring';
+import { computeMatchingKey } from './classification';
 import { classifyOutcome, type OutcomeBadge } from '../utils/outcomeClassifier';
 
 // ---------------------------------------------------------------------------
@@ -36,6 +37,7 @@ export type PatternDisplayMode = 'empty' | 'individual' | 'summary';
 /** Per-instance data for pattern view rows — Section 7.4 / 8.4 */
 export interface PatternInstance {
   mealId: string;
+  mealName: string;
   date: string;
   insulinUnits: number;
   carbs: number | null;
@@ -102,6 +104,18 @@ export interface FindPatternsOptions {
 // Helpers
 // ---------------------------------------------------------------------------
 
+/** Resolve a meal's matching key — use stored value, fall back to computing from name */
+function resolveMealKey(meal: Meal): string | null {
+  return meal.matchingKey ?? (computeMatchingKey(meal.name) || null);
+}
+
+/** Check if a meal's key matches the query — exact match or prefix match */
+function keyMatches(meal: Meal, queryKey: string): boolean {
+  const mealKey = resolveMealKey(meal);
+  if (!mealKey) return false;
+  return mealKey === queryKey || mealKey.startsWith(queryKey + ' ');
+}
+
 /**
  * Compute confidence for a solo meal.
  * Solo meals have no session-level contamination flags (curveCorrected, hypoDuringSession).
@@ -120,6 +134,7 @@ function soloMealConfidence(meal: Meal): SessionConfidence {
 function mealToInstance(meal: Meal, confidence: SessionConfidence): PatternInstance {
   return {
     mealId: meal.id,
+    mealName: meal.name,
     date: meal.loggedAt,
     insulinUnits: meal.insulinUnits,
     carbs: meal.carbsEstimated,
@@ -182,14 +197,15 @@ export function findSoloPatterns(
 
   if (!matchingKey) return empty;
 
-  // Filter: solo meals with matching key and complete glucose response
+  // Filter: meals with matching key (exact or prefix) and glucose response
+  // - Prefix match: typing "chicken" finds "chicken rice asparagus"
+  // - Includes session members: pre-migration meals may have sessionId set
+  // - Includes partial glucose: shows what data is available
   const candidates = allMeals.filter(
     m =>
-      m.sessionId == null &&
-      m.matchingKey === matchingKey &&
+      keyMatches(m, matchingKey) &&
       m.id !== excludeMealId &&
-      m.glucoseResponse != null &&
-      !m.glucoseResponse.isPartial,
+      m.glucoseResponse != null,
   );
 
   // Compute confidence for each
@@ -206,16 +222,17 @@ export function findSoloPatterns(
     ({ confidence }) => confidence === 'high',
   ).length;
 
-  if (highConfidenceCount === 0) return empty;
+  if (eligible.length === 0) return empty;
 
   // Sort newest first (Section 8.4: recency order)
   eligible.sort(
     (a, b) => new Date(b.meal.loggedAt).getTime() - new Date(a.meal.loggedAt).getTime(),
   );
 
-  // Section 7.3: display mode from N threshold
+  // Section 7.3: display mode from N threshold (use eligible count for pre-migration data)
+  const effectiveCount = Math.max(highConfidenceCount, eligible.length);
   const displayMode: PatternDisplayMode =
-    highConfidenceCount >= 3 ? 'summary' : 'individual';
+    effectiveCount >= 3 ? 'summary' : 'individual';
 
   // Build instances (HIGH + MEDIUM, MEDIUM flagged as muted)
   const instances = eligible.map(({ meal, confidence }) =>
@@ -228,13 +245,16 @@ export function findSoloPatterns(
       ? instances.slice(0, MAX_PATTERN_INSTANCES)
       : instances;
 
-  // Section 7.3: summary from HIGH meals only when N ≥ 3
+  // Section 7.3: summary from HIGH meals when available, else all eligible
   let summary: PatternSummary | null = null;
   if (displayMode === 'summary') {
     const highMeals = eligible
       .filter(({ confidence }) => confidence === 'high')
       .map(({ meal }) => meal);
-    summary = computeMealSummary(highMeals);
+    const summaryMeals = highMeals.length >= 3
+      ? highMeals
+      : eligible.map(({ meal }) => meal);
+    summary = computeMealSummary(summaryMeals);
   }
 
   return {
@@ -267,12 +287,11 @@ export function findSessionPatterns(
   if (!matchingKey) return null;
 
   // Find sessions where at least one member has matching matching_key
-  // and session has complete glucose response
+  // and session has glucose response
   const candidates = allSessions.filter(
     s =>
       s.glucoseResponse != null &&
-      !s.glucoseResponse.isPartial &&
-      s.meals.some(m => m.matchingKey === matchingKey),
+      s.meals.some(m => keyMatches(m, matchingKey)),
   );
 
   // Compute session confidence and exclude LOW

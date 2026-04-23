@@ -1,13 +1,11 @@
 /**
  * PatternView — Phase K (Session Grouping Spec Section 8.4, 8.5)
  *
- * Renders pattern data for a meal being logged. Three N-threshold states:
- *   - N=0: "No history for this meal yet."
- *   - N=1-2: Per-instance rows (date, dose, carbs, peak, time-to-peak, outcome)
- *   - N≥3: Summary row + last 10 instance rows
+ * Clean, readable pattern history for a meal being logged.
+ * Shows each past instance as its own row — no grouped averages.
  *
- * Session pattern section shown when N≥3 sessions contain the same matching_key.
- * MEDIUM-confidence solo meals shown muted. LOW excluded (by patternMatching.ts).
+ * Priority: solo meals first. Session meals shown only when
+ * no solo matches exist ("Eaten with other foods").
  *
  * All copy is history-only. Zero predictive language.
  */
@@ -16,8 +14,6 @@ import React, { useState } from 'react';
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import type {
   PatternResult,
-  SoloPatternResult,
-  SessionPatternResult,
   PatternInstance,
   SessionPatternInstance,
   PatternSummary,
@@ -41,31 +37,20 @@ export const PATTERN_COPY = {
 // Pure display logic functions (exported for testing)
 // ---------------------------------------------------------------------------
 
-/**
- * Header text for the solo pattern section — Section 8.4.
- * Returns null for empty display mode (no header shown).
- */
 export function getPatternHeaderText(
   _matchingKey: string,
   displayMode: PatternDisplayMode,
   count: number,
 ): string | null {
   if (displayMode === 'empty') return null;
-  return `Past meals \u2014 ${count} logged`;
+  if (count === 1) return 'Eaten 1 time before';
+  return `Eaten ${count} times before`;
 }
 
-/**
- * Summary row text for N≥3 — Section 8.4.
- * Shows count, dose range, peak range, and outcome frequency.
- */
 export function formatSummaryText(summary: PatternSummary): string {
   const parts: string[] = [];
-
-  // Dose range
   const [dMin, dMax] = summary.doseRange;
   parts.push(dMin === dMax ? `${dMin}u` : `${dMin}\u2013${dMax}u`);
-
-  // Peak range
   const [pMin, pMax] = summary.peakRange;
   if (pMin > 0 || pMax > 0) {
     const peakStr =
@@ -74,20 +59,14 @@ export function formatSummaryText(summary: PatternSummary): string {
         : `peak ${pMin.toFixed(1)}\u2013${pMax.toFixed(1)}`;
     parts.push(peakStr);
   }
-
-  // Outcome frequency
   const outcomeText = formatOutcomeFrequency(
     summary.outcomeFrequency,
     summary.count,
   );
   parts.push(outcomeText);
-
   return parts.join(' \u00B7 ');
 }
 
-/**
- * Outcome frequency text — "X of N ended in range" (Section 8.4).
- */
 export function formatOutcomeFrequency(
   frequency: Record<string, number>,
   total: number,
@@ -96,11 +75,8 @@ export function formatOutcomeFrequency(
   return `${inRange} of ${total} ended in range`;
 }
 
-/**
- * Session pattern section header — Section 8.4.
- */
 export function getSessionSectionHeader(sessionCount: number): string {
-  return `Eaten alongside other food (${sessionCount} sessions)`;
+  return `Also eaten with other foods (${sessionCount} times)`;
 }
 
 // ---------------------------------------------------------------------------
@@ -131,27 +107,18 @@ export function PatternView({ result, onInstanceTap }: PatternViewProps) {
   const header = getPatternHeaderText(
     solo.matchingKey,
     solo.displayMode,
-    solo.highConfidenceCount,
+    solo.instances.length,
   );
+
+  // Show session section only when there are no solo instances
+  const showSession = session && solo.instances.length === 0;
 
   return (
     <View style={styles.container}>
       {/* Header */}
       {header && <Text style={styles.header}>{header}</Text>}
 
-      {/* Summary row — N≥3 only (Section 8.4) */}
-      {solo.displayMode === 'summary' && solo.summary && (
-        <Pressable
-          style={styles.summaryRow}
-          onPress={() => setShowSummaryInfo(true)}
-        >
-          <Text style={styles.summaryText}>
-            {formatSummaryText(solo.summary)}
-          </Text>
-        </Pressable>
-      )}
-
-      {/* Instance rows — recency order, newest first */}
+      {/* Instance rows — one per past meal, newest first */}
       {solo.instances.map((instance, index) => (
         <Pressable
           key={instance.mealId}
@@ -162,8 +129,8 @@ export function PatternView({ result, onInstanceTap }: PatternViewProps) {
         </Pressable>
       ))}
 
-      {/* Session pattern section — N≥3 sessions (Section 8.4) */}
-      {session && (
+      {/* Session section — only when no solo matches */}
+      {showSession && (
         <View style={styles.sessionSection}>
           <Text style={styles.sessionHeader}>
             {getSessionSectionHeader(session.sessionCount)}
@@ -182,7 +149,7 @@ export function PatternView({ result, onInstanceTap }: PatternViewProps) {
         </View>
       )}
 
-      {/* Summary info sheet — tap on summary row (Section 8.4) */}
+      {/* Info sheet — tap on header */}
       <Modal
         visible={showSummaryInfo}
         transparent
@@ -214,7 +181,7 @@ export function PatternView({ result, onInstanceTap }: PatternViewProps) {
 }
 
 // ---------------------------------------------------------------------------
-// Instance row — solo meal (Section 8.4)
+// Instance row — clean, one meal per row
 // ---------------------------------------------------------------------------
 
 function InstanceRow({ instance }: { instance: PatternInstance }) {
@@ -225,41 +192,35 @@ function InstanceRow({ instance }: { instance: PatternInstance }) {
   });
 
   return (
-    <View style={[styles.rowContent, instance.isMuted && styles.rowMuted]}>
-      <View style={styles.rowTop}>
-        <Text
-          style={[styles.rowDate, instance.isMuted && styles.textMuted]}
-        >
-          {dateStr}
-        </Text>
-        <Text
-          style={[styles.rowStat, instance.isMuted && styles.textMuted]}
-        >
-          {instance.insulinUnits}u
-        </Text>
+    <View style={styles.rowContent}>
+      {/* Meal name — large and clear */}
+      <Text style={styles.rowName} numberOfLines={1}>
+        {instance.mealName}
+      </Text>
+
+      {/* Stats line — date, dose, carbs, peak */}
+      <View style={styles.rowStats}>
+        <Text style={styles.rowDate}>{dateStr}</Text>
+        <Text style={styles.rowDot}>{'\u00B7'}</Text>
+        <Text style={styles.rowStat}>{instance.insulinUnits}u</Text>
         {instance.carbs != null && (
-          <Text
-            style={[styles.rowStat, instance.isMuted && styles.textMuted]}
-          >
-            {instance.carbs}g
-          </Text>
+          <>
+            <Text style={styles.rowDot}>{'\u00B7'}</Text>
+            <Text style={styles.rowStat}>{instance.carbs}g</Text>
+          </>
         )}
         {instance.peakGlucose != null && (
-          <Text
-            style={[styles.rowStat, instance.isMuted && styles.textMuted]}
-          >
-            peak {instance.peakGlucose.toFixed(1)}
-          </Text>
-        )}
-        {instance.timeToPeakMins != null && (
-          <Text
-            style={[styles.rowStatSmall, instance.isMuted && styles.textMuted]}
-          >
-            {instance.timeToPeakMins}min
-          </Text>
+          <>
+            <Text style={styles.rowDot}>{'\u00B7'}</Text>
+            <Text style={styles.rowStat}>
+              peak {instance.peakGlucose.toFixed(1)}
+            </Text>
+          </>
         )}
       </View>
-      <View style={styles.rowBottom}>
+
+      {/* Outcome badge */}
+      <View style={styles.rowBadge}>
         <OutcomeBadge badge={instance.outcome} size="small" />
       </View>
     </View>
@@ -267,7 +228,7 @@ function InstanceRow({ instance }: { instance: PatternInstance }) {
 }
 
 // ---------------------------------------------------------------------------
-// Session instance row — Section 8.4
+// Session instance row
 // ---------------------------------------------------------------------------
 
 function SessionInstanceRow({
@@ -283,22 +244,22 @@ function SessionInstanceRow({
 
   return (
     <View style={styles.rowContent}>
-      <View style={styles.rowTop}>
+      <View style={styles.rowStats}>
         <Text style={styles.rowDate}>{dateStr}</Text>
-        <Text style={styles.rowStat}>
-          {instance.mealCount} meals
-        </Text>
+        <Text style={styles.rowDot}>{'\u00B7'}</Text>
+        <Text style={styles.rowStat}>{instance.mealCount} meals</Text>
+        <Text style={styles.rowDot}>{'\u00B7'}</Text>
         <Text style={styles.rowStat}>{instance.totalInsulin}u</Text>
-        {instance.totalCarbs != null && (
-          <Text style={styles.rowStat}>{instance.totalCarbs}g</Text>
-        )}
         {instance.peakGlucose != null && (
-          <Text style={styles.rowStat}>
-            peak {instance.peakGlucose.toFixed(1)}
-          </Text>
+          <>
+            <Text style={styles.rowDot}>{'\u00B7'}</Text>
+            <Text style={styles.rowStat}>
+              peak {instance.peakGlucose.toFixed(1)}
+            </Text>
+          </>
         )}
       </View>
-      <View style={styles.rowBottom}>
+      <View style={styles.rowBadge}>
         <OutcomeBadge badge={instance.outcome} size="small" />
       </View>
     </View>
@@ -306,106 +267,87 @@ function SessionInstanceRow({
 }
 
 // ---------------------------------------------------------------------------
-// Styles
+// Styles — clean, bold, readable
 // ---------------------------------------------------------------------------
 
 const styles = StyleSheet.create({
   container: {
     backgroundColor: COLORS.surface,
     borderRadius: 12,
-    marginBottom: 8,
+    marginBottom: 16,
     overflow: 'hidden',
   },
   emptyText: {
-    fontSize: 14,
+    fontSize: 15,
     color: COLORS.textSecondary,
     fontFamily: FONTS.regular,
     textAlign: 'center',
-    paddingVertical: 16,
+    paddingVertical: 20,
     paddingHorizontal: 16,
   },
   header: {
-    fontSize: 11,
-    color: COLORS.textMuted,
-    fontFamily: FONTS.regular,
+    fontSize: 13,
+    color: '#FFFFFF',
+    fontFamily: FONTS.semiBold,
+    fontWeight: '600',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
     paddingHorizontal: 16,
-    paddingTop: 12,
-    paddingBottom: 6,
-  },
-  summaryRow: {
-    backgroundColor: COLORS.surfaceRaised,
-    marginHorizontal: 12,
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    marginBottom: 4,
-  },
-  summaryText: {
-    fontSize: 12,
-    color: COLORS.text,
-    fontFamily: FONTS.regular,
-    textAlign: 'center',
+    paddingTop: 14,
+    paddingBottom: 8,
   },
   instanceRow: {
     paddingHorizontal: 16,
-    paddingVertical: 10,
+    paddingVertical: 12,
   },
   instanceDivider: {
-    borderTopWidth: 1,
+    borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: COLORS.separator,
   },
   rowContent: {
     gap: 4,
   },
-  rowMuted: {
-    opacity: 0.5,
+  rowName: {
+    fontSize: 16,
+    color: '#FFFFFF',
+    fontFamily: FONTS.semiBold,
+    fontWeight: '600',
   },
-  rowTop: {
+  rowStats: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    flexWrap: 'wrap',
-  },
-  rowBottom: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    gap: 6,
     marginTop: 2,
   },
   rowDate: {
-    fontSize: 13,
-    color: COLORS.text,
-    fontFamily: FONTS.regular,
-    flex: 1,
-    minWidth: 80,
-  },
-  rowStat: {
-    fontSize: 12,
+    fontSize: 14,
     color: COLORS.textSecondary,
     fontFamily: FONTS.regular,
   },
-  rowStatSmall: {
-    fontSize: 11,
+  rowDot: {
+    fontSize: 14,
     color: COLORS.textMuted,
+  },
+  rowStat: {
+    fontSize: 14,
+    color: COLORS.textSecondary,
     fontFamily: FONTS.regular,
   },
-  textMuted: {
-    color: COLORS.textMuted,
+  rowBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 4,
   },
   sessionSection: {
-    marginTop: 8,
     borderTopWidth: 1,
     borderTopColor: COLORS.separator,
   },
   sessionHeader: {
-    fontSize: 11,
-    color: COLORS.textMuted,
+    fontSize: 13,
+    color: COLORS.textSecondary,
     fontFamily: FONTS.regular,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
     paddingHorizontal: 16,
-    paddingTop: 10,
+    paddingTop: 12,
     paddingBottom: 6,
   },
   overlay: {

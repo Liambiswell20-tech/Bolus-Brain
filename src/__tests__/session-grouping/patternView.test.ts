@@ -46,6 +46,7 @@ import {
 function makeInstance(overrides: Partial<PatternInstance> = {}): PatternInstance {
   return {
     mealId: 'meal-1',
+    mealName: 'Chicken rice',
     date: '2026-04-20T12:00:00Z',
     insulinUnits: 4,
     carbs: 30,
@@ -126,14 +127,14 @@ describe('PatternView: T-D2 N=1-2 individual', () => {
     const header = getPatternHeaderText('chips', 'individual', 2);
     expect(header).not.toBeNull();
     expect(header).toContain('2');
-    expect(header).toContain('logged');
+    expect(header).toContain('before');
   });
 
   it('getPatternHeaderText returns correct header for N=1', () => {
     const header = getPatternHeaderText('chips', 'individual', 1);
     expect(header).not.toBeNull();
     expect(header).toContain('1');
-    expect(header).toContain('logged');
+    expect(header).toContain('before');
   });
 });
 
@@ -146,7 +147,7 @@ describe('PatternView: T-D3 N=5 summary', () => {
     const header = getPatternHeaderText('chips', 'summary', 5);
     expect(header).not.toBeNull();
     expect(header).toContain('5');
-    expect(header).toContain('logged');
+    expect(header).toContain('before');
   });
 
   it('formatSummaryText returns dose range, peak range, and outcome', () => {
@@ -237,12 +238,12 @@ describe('PatternView: T-D4 LOW excluded', () => {
 describe('PatternView: T-D5 session pattern section', () => {
   it('getSessionSectionHeader returns correct text for N≥3 sessions', () => {
     const header = getSessionSectionHeader(4);
-    expect(header).toBe('Eaten alongside other food (4 sessions)');
+    expect(header).toBe('Also eaten with other foods (4 times)');
   });
 
   it('getSessionSectionHeader returns correct text for exactly 3 sessions', () => {
     const header = getSessionSectionHeader(3);
-    expect(header).toBe('Eaten alongside other food (3 sessions)');
+    expect(header).toBe('Also eaten with other foods (3 times)');
   });
 
   it('session pattern is null when fewer than 3 sessions', () => {
